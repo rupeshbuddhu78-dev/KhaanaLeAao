@@ -57,25 +57,20 @@ app.post('/send-otp', async (req, res) => {
   }
 });
 
-
-
 // 2. 🔥 FIX KIYA GAYA ROUTE: Duplicate Phone Number Checking ke sath
 app.post('/complete-registration', async (req, res) => {
     const { name, phone, password } = req.body;
     try {
-        // Pehle check karo ki is phone number se koi row pehle se hai kya
         const { data: existingUser, error: fetchError } = await supabase
             .from('restaurants')
             .select('*')
             .eq('phone', phone)
-            .single()
+            .single();
 
         if (existingUser) {
-            // Agar account pehle se ban chuka hai (pending ya active hai) toh rok do
             if (existingUser.status !== 'incomplete') {
                  return res.status(400).json({ status: 'error', message: 'Ye mobile number pehle se registered hai!' });
             } else {
-                // Agar incomplete hai (matlab user ne form beech mein chhod diya tha), toh nayi row mat banao, purani ko hi update kar do
                 const { error: updateError } = await supabase
                     .from('restaurants')
                     .update({ name: name, password: password })
@@ -86,7 +81,6 @@ app.post('/complete-registration', async (req, res) => {
             }
         }
 
-        // Agar bilkul naya number hai tabhi nayi row insert karo
         const { error: insertError } = await supabase
             .from('restaurants')
             .insert([{ name, phone, password, status: 'incomplete' }]);
@@ -99,7 +93,7 @@ app.post('/complete-registration', async (req, res) => {
     }
 });
 
-// 3. Login ke liye (FIXED - takki galat detail pe app crash na ho)
+// 3. Login ke liye
 app.post('/login-partner', async (req, res) => {
     const { phone, password } = req.body;
     try {
@@ -124,15 +118,13 @@ app.post('/login-partner', async (req, res) => {
     }
 });
 
-// 4. 3-Step Restaurant Registration Details Save karne ke liye (BINA CHHUE HUE - SAME TO SAME)
+// 4. 3-Step Restaurant Registration Details Save karne ke liye
 app.post('/register-restaurant-details', async (req, res) => {
     const { 
         phone, restaurantName, ownerName, address, cuisine, foodType, 
         timings, fssaiUrl, panUrl, aadhaarUrl, logoUrl, accName, accNo, ifsc 
     } = req.body;
     
-    console.log("Aaya hua data:", req.body);
-
     try {
         const { data, error } = await supabase
             .from('restaurants')
@@ -155,11 +147,7 @@ app.post('/register-restaurant-details', async (req, res) => {
             .eq('phone', phone)
             .select(); 
 
-        if (error) {
-            console.error("Supabase Error:", error);
-            throw error;
-        }
-
+        if (error) throw error;
         res.json({ status: 'success', message: 'Restaurant details submitted successfully!' });
     } catch (error) {
         console.error("Route 4 Crash:", error.message);
@@ -167,7 +155,7 @@ app.post('/register-restaurant-details', async (req, res) => {
     }
 });
 
-// 🔥 5. NAYA ROUTE: App refresh button aur auto-status ke liye
+// 5. NAYA ROUTE: App refresh button aur auto-status ke liye
 app.post('/check-status', async (req, res) => {
     const { phone } = req.body;
     try {
@@ -185,7 +173,6 @@ app.post('/check-status', async (req, res) => {
             res.status(404).json({ status: 'error', message: 'User not found' });
         }
     } catch (error) {
-        console.error("Status Check Error:", error.message);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
@@ -219,10 +206,10 @@ app.post('/admin/approve-restaurant', async (req, res) => {
         if (error) throw error;
         res.json({ status: 'success', message: `Restaurant marked as ${finalStatus.toUpperCase()} Successfully!` });
     } catch (error) {
-        console.error("Admin Status Update Error:", error.message);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
+
 // ----------------------------------------------------
 // 🔥 MAIN DASHBOARD ROUTES
 // ----------------------------------------------------
@@ -244,7 +231,6 @@ app.get('/partner/dashboard/:phone', async (req, res) => {
             res.status(404).json({ status: 'error', message: 'Restaurant not found' });
         }
     } catch (error) {
-        console.error("Dashboard Fetch Error:", error.message);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
@@ -261,7 +247,80 @@ app.post('/partner/update-status', async (req, res) => {
         if (error) throw error;
         res.json({ status: 'success', message: 'Status updated to ' + (is_online ? 'Online' : 'Offline') });
     } catch (error) {
-        console.error("Update Status Error:", error.message);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// ----------------------------------------------------
+// 🔥 MENU MANAGEMENT ROUTES (NAYE ROUTES)
+// ----------------------------------------------------
+
+// 10. Nayi Category Add karne ke liye (Jaise: Starters, Main Course)
+app.post('/partner/add-category', async (req, res) => {
+    const { restaurant_phone, name, sort_order } = req.body;
+    try {
+        const { data, error } = await supabase
+            .from('menu_categories')
+            .insert([{ restaurant_phone, name, sort_order }])
+            .select();
+            
+        if (error) throw error;
+        res.json({ status: 'success', message: 'Category added successfully!', data });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// 11. Saari Categories Fetch karne ke liye (App mein dikhane ke liye)
+app.get('/partner/categories/:phone', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('menu_categories')
+            .select('*')
+            .eq('restaurant_phone', req.params.phone)
+            .order('sort_order', { ascending: true }); // Line se dikhane ke liye
+            
+        if (error) throw error;
+        res.json({ status: 'success', data });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// 12. Naya Menu Item (Dish) Add karne ke liye (prep_time ke sath)
+app.post('/partner/add-item', async (req, res) => {
+    const { 
+        restaurant_phone, category_id, item_name, description, 
+        is_veg, base_price, image_url, is_available, has_variants, prep_time 
+    } = req.body;
+    
+    try {
+        const { data, error } = await supabase
+            .from('menu_items')
+            .insert([{ 
+                restaurant_phone, category_id, item_name, description, 
+                is_veg, base_price, image_url, is_available, has_variants, prep_time 
+            }])
+            .select();
+            
+        if (error) throw error;
+        res.json({ status: 'success', message: 'Dish added successfully!', data });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// 13. Pura Menu Fetch karne ke liye (Dishes dikhane ke liye)
+app.get('/partner/menu/:phone', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('menu_items')
+            .select('*')
+            .eq('restaurant_phone', req.params.phone);
+            
+        if (error) throw error;
+        res.json({ status: 'success', data });
+    } catch (error) {
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
