@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
-const { createClient } = require('@supabase/supabase-js'); // Supabase import kiya
+const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
 const app = express();
@@ -26,7 +26,7 @@ app.get('/', (req, res) => {
   res.send('KhaanaLeAao ka Backend aur Supabase dono taiyaar hain! 🚀🍲');
 });
 
-// Asli Route: OTP Bhejne ke liye
+// 1. Asli Route: OTP Bhejne ke liye
 app.post('/send-otp', async (req, res) => {
   const { phone } = req.body;
 
@@ -45,25 +45,76 @@ app.post('/send-otp', async (req, res) => {
 
     if (response.data.Status === 'Success') {
       console.log(`Success: OTP ${otp} sent to ${phone}`);
-      
-      return res.json({ 
-        status: 'success', 
-        message: 'OTP bhej diya gaya hai',
-        otp: otp 
-      });
+      return res.json({ status: 'success', message: 'OTP bhej diya gaya hai', otp: otp });
     } else {
       console.error("2Factor Gateway Error:", response.data);
       return res.status(500).json({ status: 'error', message: 'SMS Gateway issue' });
     }
-
   } catch (error) {
-    if (error.response) {
-      console.error("2Factor API Reject Error:", error.response.data);
-    } else {
-      console.error("Server/Axios ka Error:", error.message);
-    }
+    console.error("Server ka Error:", error.message);
     return res.status(500).json({ status: 'error', message: 'Backend crash ho gaya.' });
   }
+});
+
+// 2. NAYA ROUTE: OTP Verify hone ke baad Basic Account Banane ke liye
+app.post('/complete-registration', async (req, res) => {
+    const { name, phone, password } = req.body;
+    try {
+        const { data, error } = await supabase
+            .from('restaurants')
+            .insert([{ name, phone, password, status: 'incomplete' }]); // status 'incomplete' kyunki abhi 3-step bacha hai
+
+        if (error) throw error;
+        res.json({ status: 'success', message: 'Basic Account Created!' });
+    } catch (error) {
+        console.error("Supabase Error:", error.message);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// 3. NAYA ROUTE: Login ke liye
+app.post('/login-partner', async (req, res) => {
+    const { phone, password } = req.body;
+    try {
+        const { data, error } = await supabase
+            .from('restaurants')
+            .select('*')
+            .eq('phone', phone)
+            .eq('password', password)
+            .single();
+
+        if (data) {
+            res.json({ status: 'success', partner: data });
+        } else {
+            res.status(401).json({ status: 'error', message: 'Invalid credentials' });
+        }
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// 4. NAYA ROUTE: 3-Step Restaurant Registration Details Save karne ke liye
+app.post('/register-restaurant-details', async (req, res) => {
+    // Ye data tum app se bhejoge
+    const { phone, restaurantName, address, documentUrl } = req.body;
+    
+    try {
+        // Jiska phone number match karega, usi ke account mein data UPDATE hoga
+        const { data, error } = await supabase
+            .from('restaurants')
+            .update({ 
+                restaurant_name: restaurantName, 
+                address: address, 
+                document_url: documentUrl,
+                status: 'pending_verification' // Admin approval ke liye
+            })
+            .eq('phone', phone); // Phone number se check kar rahe hain
+
+        if (error) throw error;
+        res.json({ status: 'success', message: 'Restaurant details submitted successfully!' });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
 });
 
 // Server Start Karna
