@@ -8,229 +8,68 @@
     
     <style>
         /* BASE STYLES */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            display: flex;
-            background-color: #f4f6f9;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { display: flex; background-color: #f4f6f9; }
 
         /* SIDEBAR DESIGN */
-        .sidebar {
-            width: 250px;
-            height: 100vh;
-            background-color: #2c3e50;
-            color: white;
-            position: fixed;
-        }
-
-        .sidebar h2 {
-            text-align: center;
-            padding: 20px 0;
-            background-color: #e74c3c;
-            letter-spacing: 1px;
-        }
-
-        .menu {
-            list-style: none;
-            padding-top: 20px;
-        }
-
-        .menu li {
-            font-size: 16px;
-            cursor: pointer;
-            transition: 0.3s;
-            border-left: 4px solid transparent;
-        }
-
-        .menu li a {
-            text-decoration: none;
-            color: white;
-            display: block;
-            padding: 15px 25px;
-        }
-
-        .menu li i {
-            margin-right: 10px;
-            width: 20px;
-        }
-
-        .menu li:hover, .menu li.active {
-            background-color: #34495e;
-            border-left: 4px solid #e74c3c;
-        }
+        .sidebar { width: 250px; height: 100vh; background-color: #2c3e50; color: white; position: fixed; }
+        .sidebar h2 { text-align: center; padding: 20px 0; background-color: #e74c3c; letter-spacing: 1px; }
+        .menu { list-style: none; padding-top: 20px; }
+        .menu li { font-size: 16px; cursor: pointer; transition: 0.3s; border-left: 4px solid transparent; }
+        .menu li a { text-decoration: none; color: white; display: block; padding: 15px 25px; }
+        .menu li i { margin-right: 10px; width: 20px; }
+        .menu li:hover, .menu li.active { background-color: #34495e; border-left: 4px solid #e74c3c; }
 
         /* MAIN CONTENT DESIGN */
-        .main-content {
-            margin-left: 250px;
-            padding: 20px 40px;
-            width: calc(100% - 250px);
-        }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            background: white;
-            padding: 15px 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-
-        header h1 {
-            color: #333;
-            font-size: 24px;
-        }
+        .main-content { margin-left: 250px; padding: 20px 40px; width: calc(100% - 250px); }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        header h1 { color: #333; font-size: 24px; }
 
         /* RESTAURANT SPECIFIC STYLES */
-        .header-actions {
-            display: flex;
-            gap: 15px;
-        }
-        .search-box {
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            width: 250px;
-        }
-        .btn-primary, .btn-success, .btn-danger, .btn-back {
-            padding: 10px 15px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            color: white;
-            font-weight: bold;
-        }
+        .header-actions { display: flex; gap: 15px; }
+        .search-box { padding: 10px; border: 1px solid #ccc; border-radius: 5px; width: 250px; }
+        .btn-primary, .btn-success, .btn-danger, .btn-back { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; color: white; font-weight: bold; }
         .btn-primary { background: #2980b9; }
         .btn-success { background: #27ae60; }
         .btn-danger { background: #c0392b; }
         .btn-back { background: #7f8c8d; }
 
         /* Filter Tabs */
-        .filter-tabs {
-            margin-bottom: 20px;
-            display: flex;
-            gap: 10px;
-        }
-        .filter-btn {
-            padding: 8px 15px;
-            border: 1px solid #bdc3c7;
-            background: white;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        .filter-btn.active, .filter-btn:hover {
-            background: #e74c3c;
-            color: white;
-            border-color: #e74c3c;
-        }
+        .filter-tabs { margin-bottom: 20px; display: flex; gap: 10px; }
+        .filter-btn { padding: 8px 15px; border: 1px solid #bdc3c7; background: white; border-radius: 20px; cursor: pointer; transition: 0.3s; }
+        .filter-btn.active, .filter-btn:hover { background: #e74c3c; color: white; border-color: #e74c3c; }
 
         /* Data Table */
-        .table-container {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-            overflow-x: auto;
-        }
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .data-table th, .data-table td {
-            padding: 15px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-        .data-table th {
-            background: #f8f9fa;
-            color: #2c3e50;
-        }
+        .table-container { background: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); overflow-x: auto; }
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th, .data-table td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; }
+        .data-table th { background: #f8f9fa; color: #2c3e50; }
 
         /* Badges */
-        .badge {
-            padding: 5px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: bold;
-        }
+        .badge { padding: 5px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; }
         .badge.active { background: #d5f5e3; color: #27ae60; }
-        .badge.pending { background: #fcf3cf; color: #f39c12; }
-        .badge.docs-ok { background: #e8f8f5; color: #1abc9c; }
+        .badge.pending_verification { background: #fcf3cf; color: #f39c12; }
+        .badge.incomplete { background: #f2f3f4; color: #7f8c8d; }
+        .badge.suspended { background: #fadbd8; color: #c0392b; }
+        .badge.docs-ok { background: #e8f8f5; color: #1abc9c; cursor: pointer; text-decoration: none;}
 
         /* Action Buttons */
-        .action-btn {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            background: #ecf0f1;
-            color: #2c3e50;
-            transition: 0.2s;
-        }
+        .action-btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; background: #ecf0f1; color: #2c3e50; transition: 0.2s; }
         .action-btn:hover { background: #bdc3c7; }
 
         /* Inner Tabs for Details View */
-        .inner-tabs {
-            display: flex;
-            border-bottom: 2px solid #ecf0f1;
-            margin-bottom: 20px;
-        }
-        .tab-link {
-            padding: 10px 20px;
-            background: none;
-            border: none;
-            font-size: 16px;
-            cursor: pointer;
-            color: #7f8c8d;
-        }
-        .tab-link.active {
-            color: #e74c3c;
-            border-bottom: 3px solid #e74c3c;
-            font-weight: bold;
-        }
+        .inner-tabs { display: flex; border-bottom: 2px solid #ecf0f1; margin-bottom: 20px; }
+        .tab-link { padding: 10px 20px; background: none; border: none; font-size: 16px; cursor: pointer; color: #7f8c8d; }
+        .tab-link.active { color: #e74c3c; border-bottom: 3px solid #e74c3c; font-weight: bold; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         
-        .activity-box {
-            background: #fdf2e9;
-            padding: 15px;
-            border-left: 4px solid #e67e22;
-            border-radius: 4px;
-        }
-        .doc-grid {
-            display: flex;
-            gap: 15px;
-            margin-top: 15px;
-        }
-        .doc-card {
-            background: #f4f6f9;
-            padding: 15px;
-            border-radius: 6px;
-            border: 1px solid #ddd;
-            flex: 1;
-            text-align: center;
-        }
-        .doc-card button {
-            margin-top: 10px;
-            padding: 5px 10px;
-            cursor: pointer;
-            background: #34495e;
-            color: white;
-            border: none;
-            border-radius: 4px;
-        }
+        .activity-box { background: #fdf2e9; padding: 15px; border-left: 4px solid #e67e22; border-radius: 4px; }
+        .doc-grid { display: flex; gap: 15px; margin-top: 15px; }
+        .doc-card { background: #f4f6f9; padding: 15px; border-radius: 6px; border: 1px solid #ddd; flex: 1; text-align: center; }
+        .doc-card button { margin-top: 10px; padding: 5px 10px; cursor: pointer; background: #34495e; color: white; border: none; border-radius: 4px; }
         .input-box { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100%; max-width: 200px;}
 
-        /* =========================================
-           📱 MOBILE RESPONSIVE DESIGN
-           ========================================= */
         @media (max-width: 768px) {
             body { flex-direction: column; }
             .sidebar { width: 100%; height: auto; position: relative; }
@@ -271,7 +110,7 @@
                 <h1>Restaurant Management</h1>
                 <div class="header-actions">
                     <input type="text" id="searchRest" placeholder="Search restaurant..." class="search-box">
-                    <button class="btn-primary"><i class="fa-solid fa-plus"></i> Add New</button>
+                    <button class="btn-primary" onclick="loadRestaurants()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
                 </div>
             </header>
 
@@ -286,35 +125,15 @@
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Restaurant Name</th>
-                            <th>Owner Name</th>
-                            <th>Docs (FSSAI/PAN)</th>
+                            <th>Restaurant Details</th>
+                            <th>Phone (Owner ID)</th>
+                            <th>Docs URL</th>
                             <th>Status</th>
-                            <th>Rating</th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody id="restaurantTableBody">
-                        <tr>
-                            <td><strong>Sharma Dhaba</strong><br><small>Patna, Bihar</small></td>
-                            <td>Raman Sharma</td>
-                            <td><span class="badge docs-ok">Uploaded</span></td>
-                            <td><span class="badge pending">Pending</span></td>
-                            <td>N/A</td>
-                            <td>
-                                <button class="action-btn view" onclick="openDetails('Sharma Dhaba')"><i class="fa-solid fa-eye"></i> View & Approve</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>Pizza Palace</strong><br><small>Boring Road</small></td>
-                            <td>Amit Kumar</td>
-                            <td><span class="badge docs-ok">Verified</span></td>
-                            <td><span class="badge active">Active</span></td>
-                            <td>4.5 ⭐</td>
-                            <td>
-                                <button class="action-btn view" onclick="openDetails('Pizza Palace')"><i class="fa-solid fa-gear"></i> Manage</button>
-                            </td>
-                        </tr>
+                        <tr><td colspan="5" style="text-align:center;">Loading Data from Server...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -327,56 +146,41 @@
                     <h1 id="detailTitle" style="display: inline-block; margin-left: 15px;">Restaurant Name</h1>
                 </div>
                 <div class="action-group">
-                    <button class="btn-success"><i class="fa-solid fa-check"></i> Approve</button>
-                    <button class="btn-danger"><i class="fa-solid fa-ban"></i> Suspend</button>
+                    <button class="btn-success" id="btnApprove"><i class="fa-solid fa-check"></i> Approve</button>
+                    <button class="btn-danger" id="btnSuspend"><i class="fa-solid fa-ban"></i> Suspend</button>
                 </div>
             </header>
 
             <div class="inner-tabs">
                 <button class="tab-link active" onclick="switchTab(event, 'tab-overview')">📊 Overview</button>
                 <button class="tab-link" onclick="switchTab(event, 'tab-docs')">📄 Documents</button>
-                <button class="tab-link" onclick="switchTab(event, 'tab-menu')">🍽️ Menu</button>
-                <button class="tab-link" onclick="switchTab(event, 'tab-orders')">📦 Orders</button>
-                <button class="tab-link" onclick="switchTab(event, 'tab-earnings')">💰 Earnings</button>
                 <button class="tab-link" onclick="switchTab(event, 'tab-settings')">⚙️ Settings</button>
             </div>
 
             <div class="tab-content-area">
                 <div id="tab-overview" class="tab-content active">
-                    <h3>Restaurant Performance Overview</h3>
+                    <h3>Restaurant Info</h3>
                     <br>
-                    <p>Total Orders: <strong>1,204</strong> | Total Earnings: <strong>₹ 1,45,000</strong></p>
+                    <p>Phone Number: <strong id="detailPhone"></strong></p>
+                    <p>Address: <strong id="detailAddress"></strong></p>
                     <br>
-                    <p>Status: <span class="badge active">Active</span></p>
-                    <div class="activity-box" style="margin-top: 20px;">
-                        <p>🚨 <strong>AI Alert:</strong> Rating is dropping in the last 2 days. Consider checking recent reviews.</p>
-                    </div>
+                    <p>Current Status: <span id="detailStatusBadge" class="badge"></span></p>
                 </div>
                 
                 <div id="tab-docs" class="tab-content">
                     <h3>Verification Documents</h3>
                     <div class="doc-grid">
-                        <div class="doc-card"><strong>FSSAI License</strong><br><button>View PDF</button></div>
-                        <div class="doc-card"><strong>PAN Card</strong><br><button>View Image</button></div>
-                        <div class="doc-card"><strong>GST Certificate</strong><br><button>View PDF</button></div>
+                        <div class="doc-card">
+                            <strong>Cloudinary Document</strong><br>
+                            <button id="viewDocBtn">View Live Document</button>
+                        </div>
                     </div>
-                </div>
-
-                <div id="tab-menu" class="tab-content">
-                    <h3>Menu Management (Admin Override)</h3>
-                    <p style="color: #7f8c8d; margin-top: 5px;"><i>Admin can hide items or change prices if restaurant does fraud.</i></p>
                 </div>
 
                 <div id="tab-settings" class="tab-content">
                     <h3>Admin Settings for this Restaurant</h3>
                     <br>
-                    <label>Admin Commission (%)</label><br>
-                    <input type="number" value="20" class="input-box">
-                    <br><br>
-                    <label>Delivery Radius (km)</label><br>
-                    <input type="number" value="5" class="input-box">
-                    <br><br>
-                    <button class="btn-primary">Save Changes</button>
+                    <p style="color: gray;"><i>Coming Soon in Phase 2</i></p>
                 </div>
             </div>
         </div>
@@ -384,33 +188,144 @@
     </div>
 
     <script>
-        // 1. Switch between List View and Details View
-        function openDetails(restaurantName) {
+        // BACKEND KA URL (Agar same PC par hai toh localhost, agar Live IP hai toh IP address likho)
+        const SERVER_URL = 'http://localhost:5000'; // Isko apne IP se replace kar lena agar phone se test kar rahe ho
+        
+        let allRestaurantsData = []; // Data save karne ke liye global array
+
+        // Jab Page Load ho to data fetch karo
+        document.addEventListener('DOMContentLoaded', loadRestaurants);
+
+        // API Se data mangwana
+        async function loadRestaurants() {
+            let tbody = document.getElementById("restaurantTableBody");
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Fetching Live Data... ⏳</td></tr>';
+
+            try {
+                const response = await fetch(`${SERVER_URL}/admin/restaurants`);
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    allRestaurantsData = result.data;
+                    populateTable(allRestaurantsData);
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: red;">Failed to load data!</td></tr>';
+                }
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: red;">Server connection error! Check if server is running.</td></tr>';
+            }
+        }
+
+        // Table ko HTML mein render karna
+        function populateTable(restaurants) {
+            let tbody = document.getElementById("restaurantTableBody");
+            tbody.innerHTML = ""; 
+
+            if (restaurants.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No restaurants found.</td></tr>';
+                return;
+            }
+
+            restaurants.forEach((rest, index) => {
+                // Formatting Status Name
+                let displayStatus = rest.status;
+                if(rest.status === 'pending_verification') displayStatus = 'Pending';
+                
+                let row = `
+                    <tr>
+                        <td><strong>${rest.restaurant_name || 'N/A'}</strong><br><small>${rest.address || 'Location N/A'}</small></td>
+                        <td>${rest.phone}</td>
+                        <td>
+                            ${rest.document_url ? `<a href="${rest.document_url}" target="_blank" class="badge docs-ok">View Docs</a>` : `<span class="badge incomplete">No Docs</span>`}
+                        </td>
+                        <td><span class="badge ${rest.status}">${displayStatus.toUpperCase()}</span></td>
+                        <td>
+                            <button class="action-btn view" onclick="openDetails(${index})">
+                                <i class="fa-solid fa-gear"></i> Manage
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        // 1. Details Page Khola aur Data Set Kiya
+        function openDetails(index) {
+            let rest = allRestaurantsData[index];
+
             document.getElementById('listView').style.display = 'none';
             document.getElementById('detailsView').style.display = 'block';
-            document.getElementById('detailTitle').innerText = restaurantName;
+            
+            // Set Text
+            document.getElementById('detailTitle').innerText = rest.restaurant_name || 'Incomplete Profile';
+            document.getElementById('detailPhone').innerText = rest.phone;
+            document.getElementById('detailAddress').innerText = rest.address || 'Not Provided';
+            
+            // Set Status Badge
+            let badge = document.getElementById('detailStatusBadge');
+            badge.className = `badge ${rest.status}`;
+            badge.innerText = rest.status.toUpperCase();
+
+            // Document View Button Action
+            let viewDocBtn = document.getElementById('viewDocBtn');
+            if(rest.document_url) {
+                viewDocBtn.style.display = 'inline-block';
+                viewDocBtn.onclick = () => window.open(rest.document_url, '_blank');
+            } else {
+                viewDocBtn.style.display = 'none'; // Agar doc upload nahi kiya to button hide kar do
+            }
+
+            // Buttons Actions
+            document.getElementById('btnApprove').onclick = () => updateRestaurantStatus(rest.phone, 'active');
+            document.getElementById('btnSuspend').onclick = () => updateRestaurantStatus(rest.phone, 'suspended');
         }
 
         function closeDetails() {
             document.getElementById('detailsView').style.display = 'none';
             document.getElementById('listView').style.display = 'block';
+            loadRestaurants(); // Update table when going back
         }
 
-        // 2. Tab Switching Logic inside Details Page
+        // 2. Status Update API Call
+        async function updateRestaurantStatus(phone, newStatus) {
+            let confirmMsg = newStatus === 'active' ? "Approve this restaurant?" : "Suspend this restaurant?";
+            if(!confirm(confirmMsg)) return;
+
+            // Agar tumhara endpoint /admin/approve-restaurant hai, toh wahi call karenge (ya tum backend update kar lena dynamic banane ke liye)
+            try {
+                // Using the approve endpoint we created earlier
+                const endpoint = newStatus === 'active' ? '/admin/approve-restaurant' : `/admin/update-status`; // Suspend ka route Node.js mein banana padega agar nahi hai
+                
+                const response = await fetch(`${SERVER_URL}/admin/approve-restaurant`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: phone, status: newStatus }) 
+                });
+                
+                const result = await response.json();
+                
+                if(result.status === 'success') {
+                    alert(`Success: Restaurant marked as ${newStatus.toUpperCase()}!`);
+                    closeDetails();
+                } else {
+                    alert("Error updating status: " + result.message);
+                }
+            } catch (error) {
+                console.error("Status Update Error:", error);
+                alert("Server issue. Check console.");
+            }
+        }
+
+        // 3. Tab Switching Logic inside Details Page
         function switchTab(event, tabId) {
-            // Hide all tab contents
             let contents = document.getElementsByClassName("tab-content");
-            for (let i = 0; i < contents.length; i++) {
-                contents[i].classList.remove("active");
-            }
+            for (let i = 0; i < contents.length; i++) contents[i].classList.remove("active");
 
-            // Remove active class from all tab buttons
             let links = document.getElementsByClassName("tab-link");
-            for (let i = 0; i < links.length; i++) {
-                links[i].classList.remove("active");
-            }
+            for (let i = 0; i < links.length; i++) links[i].classList.remove("active");
 
-            // Show the selected tab and make button active
             document.getElementById(tabId).classList.add("active");
             event.currentTarget.classList.add("active");
         }
