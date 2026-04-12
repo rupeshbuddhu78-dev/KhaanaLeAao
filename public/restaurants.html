@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Management | KhaanaAdmin</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>🍔 KhaanaAdmin</h2>
+        <ul class="menu">
+            <li onclick="window.location.href='index.html'"><i class="fa-solid fa-house"></i> Dashboard</li>
+            <li><i class="fa-solid fa-users"></i> Users</li>
+            <li class="active"><i class="fa-solid fa-utensils"></i> Restaurants</li>
+            <li><i class="fa-solid fa-box-open"></i> Orders</li>
+            <li><i class="fa-solid fa-motorcycle"></i> Delivery</li>
+            <li><i class="fa-solid fa-wallet"></i> Finance</li>
+            <li><i class="fa-solid fa-bullhorn"></i> Marketing</li>
+            <li><i class="fa-solid fa-gear"></i> Settings</li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        
+        <div id="listView">
+            <header>
+                <h1>Restaurant Management</h1>
+                <div class="header-actions">
+                    <input type="text" id="searchRest" placeholder="Search restaurant..." class="search-box">
+                    <button class="btn-primary"><i class="fa-solid fa-plus"></i> Add New</button>
+                </div>
+            </header>
+
+            <div class="filter-tabs">
+                <button class="filter-btn active">All</button>
+                <button class="filter-btn">Pending Approval 🟡</button>
+                <button class="filter-btn">Approved ✅</button>
+                <button class="filter-btn">Suspended 🚫</button>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Restaurant Name</th>
+                            <th>Owner Name</th>
+                            <th>Docs (FSSAI/PAN)</th>
+                            <th>Status</th>
+                            <th>Rating</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="restaurantTableBody">
+                        <tr>
+                            <td><strong>Sharma Dhaba</strong><br><small>Patna, Bihar</small></td>
+                            <td>Raman Sharma</td>
+                            <td><span class="badge docs-ok">Uploaded</span></td>
+                            <td><span class="badge pending">Pending</span></td>
+                            <td>N/A</td>
+                            <td>
+                                <button class="action-btn view" onclick="openDetails('Sharma Dhaba')"><i class="fa-solid fa-eye"></i> View & Approve</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Pizza Palace</strong><br><small>Boring Road</small></td>
+                            <td>Amit Kumar</td>
+                            <td><span class="badge docs-ok">Verified</span></td>
+                            <td><span class="badge active">Active</span></td>
+                            <td>4.5 ⭐</td>
+                            <td>
+                                <button class="action-btn view" onclick="openDetails('Pizza Palace')"><i class="fa-solid fa-gear"></i> Manage</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="detailsView" style="display: none;">
+            <header>
+                <div>
+                    <button class="btn-back" onclick="closeDetails()"><i class="fa-solid fa-arrow-left"></i> Back to List</button>
+                    <h1 id="detailTitle" style="display: inline-block; margin-left: 15px;">Restaurant Name</h1>
+                </div>
+                <div class="action-group">
+                    <button class="btn-success"><i class="fa-solid fa-check"></i> Approve</button>
+                    <button class="btn-danger"><i class="fa-solid fa-ban"></i> Suspend</button>
+                </div>
+            </header>
+
+            <div class="inner-tabs">
+                <button class="tab-link active" onclick="switchTab(event, 'tab-overview')">📊 Overview</button>
+                <button class="tab-link" onclick="switchTab(event, 'tab-docs')">📄 Documents</button>
+                <button class="tab-link" onclick="switchTab(event, 'tab-menu')">🍽️ Menu</button>
+                <button class="tab-link" onclick="switchTab(event, 'tab-orders')">📦 Orders</button>
+                <button class="tab-link" onclick="switchTab(event, 'tab-earnings')">💰 Earnings</button>
+                <button class="tab-link" onclick="switchTab(event, 'tab-settings')">⚙️ Settings</button>
+            </div>
+
+            <div class="tab-content-area">
+                <div id="tab-overview" class="tab-content active">
+                    <h3>Restaurant Performance Overview</h3>
+                    <p>Total Orders: <strong>1,204</strong> | Total Earnings: <strong>₹ 1,45,000</strong></p>
+                    <p>Status: <span class="badge active">Active</span></p>
+                    <div class="activity-box" style="margin-top: 20px;">
+                        <p>🚨 AI Alert: "Rating is dropping in the last 2 days."</p>
+                    </div>
+                </div>
+                
+                <div id="tab-docs" class="tab-content">
+                    <h3>Verification Documents</h3>
+                    <div class="doc-grid">
+                        <div class="doc-card">FSSAI License: <button>View PDF</button></div>
+                        <div class="doc-card">PAN Card: <button>View Image</button></div>
+                        <div class="doc-card">GST Certificate: <button>View PDF</button></div>
+                    </div>
+                </div>
+
+                <div id="tab-menu" class="tab-content">
+                    <h3>Menu Management (Admin Override)</h3>
+                    <p><i>Admin can hide items or change prices if restaurant does fraud.</i></p>
+                    </div>
+
+                <div id="tab-settings" class="tab-content">
+                    <h3>Admin Settings for this Restaurant</h3>
+                    <label>Admin Commission (%)</label>
+                    <input type="number" value="20" class="input-box">
+                    <br><br>
+                    <label>Delivery Radius (km)</label>
+                    <input type="number" value="5" class="input-box">
+                    <br><br>
+                    <button class="btn-primary">Save Changes</button>
+                </div>
+                
+                </div>
+        </div>
+
+    </div>
+
+    <script src="restaurants.js"></script>
+</body>
+</html>
