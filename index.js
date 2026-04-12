@@ -97,7 +97,7 @@ app.post('/complete-registration', async (req, res) => {
     }
 });
 
-// 3. Login ke liye (FIXED)
+// 3. Login ke liye (FIXED - takki galat detail pe app crash na ho)
 app.post('/login-partner', async (req, res) => {
     const { phone, password } = req.body;
     try {
@@ -106,7 +106,7 @@ app.post('/login-partner', async (req, res) => {
             .select('*')
             .eq('phone', phone)
             .eq('password', password)
-            .maybeSingle(); // single() ki jagah maybeSingle() lagaya taaki crash na ho
+            .maybeSingle();
 
         if (error) {
             throw error;
@@ -118,12 +118,11 @@ app.post('/login-partner', async (req, res) => {
             res.status(401).json({ status: 'error', message: 'Invalid credentials' });
         }
     } catch (error) {
-        console.error("Login Error:", error.message);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
 
-// 4. 3-Step Restaurant Registration Details Save karne ke liye
+// 4. 3-Step Restaurant Registration Details Save karne ke liye (BINA CHHUE HUE - SAME TO SAME)
 app.post('/register-restaurant-details', async (req, res) => {
     const { 
         phone, restaurantName, ownerName, address, cuisine, foodType, 
@@ -166,7 +165,7 @@ app.post('/register-restaurant-details', async (req, res) => {
     }
 });
 
-// 🔥 5. NAYA ROUTE: App refresh button ke liye status check
+// 🔥 5. NAYA ROUTE: App refresh button aur auto-status ke liye
 app.post('/check-status', async (req, res) => {
     const { phone } = req.body;
     try {
