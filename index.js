@@ -94,38 +94,6 @@ app.post('/login-partner', async (req, res) => {
     }
 });
 
-// 5. NAYA ROUTE: Admin Panel ke liye sabhi restaurants fetch karna
-app.get('/admin/restaurants', async (req, res) => {
-    try {
-        // Supabase se sabhi restaurants ka data lana
-        const { data, error } = await supabase
-            .from('restaurants')
-            .select('*')
-            .order('created_at', { ascending: false }); // Naye wale upar dikhenge
-
-        if (error) throw error;
-        res.json({ status: 'success', data: data });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-// 6. NAYA ROUTE: Admin Panel se Restaurant Approve karne ke liye
-app.post('/admin/approve-restaurant', async (req, res) => {
-    const { phone } = req.body;
-    try {
-        const { data, error } = await supabase
-            .from('restaurants')
-            .update({ status: 'active' }) // Status update kar diya
-            .eq('phone', phone);
-
-        if (error) throw error;
-        res.json({ status: 'success', message: 'Restaurant Approved Successfully!' });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
 // 4. NAYA ROUTE: 3-Step Restaurant Registration Details Save karne ke liye
 app.post('/register-restaurant-details', async (req, res) => {
     // Ye data tum app se bhejoge
@@ -146,6 +114,44 @@ app.post('/register-restaurant-details', async (req, res) => {
         if (error) throw error;
         res.json({ status: 'success', message: 'Restaurant details submitted successfully!' });
     } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// 5. NAYA ROUTE: Admin Panel ke liye sabhi restaurants fetch karna
+app.get('/admin/restaurants', async (req, res) => {
+    try {
+        // Supabase se sabhi restaurants ka data lana
+        const { data, error } = await supabase
+            .from('restaurants')
+            .select('*')
+            .order('created_at', { ascending: false }); // Naye wale upar dikhenge
+
+        if (error) throw error;
+        res.json({ status: 'success', data: data });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// 6. UPDATED ROUTE: Admin Panel se Restaurant Approve aur Suspend karne ke liye
+app.post('/admin/approve-restaurant', async (req, res) => {
+    // Frontend (Admin Panel) se phone number aur naya status (active/suspended) aayega
+    const { phone, status } = req.body; 
+    
+    // Agar by chance admin panel se 'status' na aaye, toh default 'active' maan lenge
+    const finalStatus = status ? status : 'active'; 
+
+    try {
+        const { data, error } = await supabase
+            .from('restaurants')
+            .update({ status: finalStatus }) // Database mein status update kar rahe hain
+            .eq('phone', phone);
+
+        if (error) throw error;
+        res.json({ status: 'success', message: `Restaurant marked as ${finalStatus.toUpperCase()} Successfully!` });
+    } catch (error) {
+        console.error("Admin Status Update Error:", error.message);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
