@@ -97,7 +97,7 @@ app.post('/complete-registration', async (req, res) => {
     }
 });
 
-// 3. Login ke liye
+// 3. Login ke liye (FIXED)
 app.post('/login-partner', async (req, res) => {
     const { phone, password } = req.body;
     try {
@@ -106,7 +106,11 @@ app.post('/login-partner', async (req, res) => {
             .select('*')
             .eq('phone', phone)
             .eq('password', password)
-            .single();
+            .maybeSingle(); // single() ki jagah maybeSingle() lagaya taaki crash na ho
+
+        if (error) {
+            throw error;
+        }
 
         if (data) {
             res.json({ status: 'success', partner: data });
@@ -114,6 +118,7 @@ app.post('/login-partner', async (req, res) => {
             res.status(401).json({ status: 'error', message: 'Invalid credentials' });
         }
     } catch (error) {
+        console.error("Login Error:", error.message);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
@@ -161,7 +166,30 @@ app.post('/register-restaurant-details', async (req, res) => {
     }
 });
 
-// 5. Admin Panel ke liye sabhi restaurants fetch karna
+// 🔥 5. NAYA ROUTE: App refresh button ke liye status check
+app.post('/check-status', async (req, res) => {
+    const { phone } = req.body;
+    try {
+        const { data, error } = await supabase
+            .from('restaurants')
+            .select('status')
+            .eq('phone', phone)
+            .maybeSingle();
+
+        if (error) throw error;
+
+        if (data) {
+            res.json({ status: 'success', dbStatus: data.status });
+        } else {
+            res.status(404).json({ status: 'error', message: 'User not found' });
+        }
+    } catch (error) {
+        console.error("Status Check Error:", error.message);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// 6. Admin Panel ke liye sabhi restaurants fetch karna
 app.get('/admin/restaurants', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -176,7 +204,7 @@ app.get('/admin/restaurants', async (req, res) => {
     }
 });
 
-// 6. Admin Panel se Restaurant Approve aur Suspend karne ke liye
+// 7. Admin Panel se Restaurant Approve aur Suspend karne ke liye
 app.post('/admin/approve-restaurant', async (req, res) => {
     const { phone, status } = req.body; 
     const finalStatus = status ? status : 'active'; 
