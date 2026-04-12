@@ -96,36 +96,41 @@ app.post('/login-partner', async (req, res) => {
 
 // 4. NAYA ROUTE: 3-Step Restaurant Registration Details Save karne ke liye
 app.post('/register-restaurant-details', async (req, res) => {
-    // Ye data tum app se bhejoge
     const { phone, restaurantName, address, documentUrl } = req.body;
     
+    console.log("Aaya hua data:", req.body); // Debugging ke liye
+
     try {
-        // Jiska phone number match karega, usi ke account mein data UPDATE hoga
         const { data, error } = await supabase
             .from('restaurants')
             .update({ 
-                name: restaurantName, // 🔥 FIX YAHAN HAI: restaurant_name ko hata kar name kar diya
+                restaurant_name: restaurantName, // 🔥 FIX YAHAN HAI: Ab ye tumhare database column se match karega
                 address: address, 
                 fssai_url: documentUrl, 
-                status: 'pending_verification' // Admin approval ke liye
+                status: 'pending_verification'
             })
-            .eq('phone', phone); // Phone number se check kar rahe hain
+            .eq('phone', phone)
+            .select(); // Isse error theek se catch hota hai
 
-        if (error) throw error;
+        if (error) {
+            console.error("Supabase Error:", error);
+            throw error;
+        }
+
         res.json({ status: 'success', message: 'Restaurant details submitted successfully!' });
     } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
+        console.error("Route 4 Crash:", error.message);
+        res.status(500).json({ status: 'error', message: error.message || "Unknown Database Error" });
     }
 });
 
 // 5. NAYA ROUTE: Admin Panel ke liye sabhi restaurants fetch karna
 app.get('/admin/restaurants', async (req, res) => {
     try {
-        // Supabase se sabhi restaurants ka data lana
         const { data, error } = await supabase
             .from('restaurants')
             .select('*')
-            .order('created_at', { ascending: false }); // Naye wale upar dikhenge
+            .order('created_at', { ascending: false }); 
 
         if (error) throw error;
         res.json({ status: 'success', data: data });
@@ -136,16 +141,13 @@ app.get('/admin/restaurants', async (req, res) => {
 
 // 6. UPDATED ROUTE: Admin Panel se Restaurant Approve aur Suspend karne ke liye
 app.post('/admin/approve-restaurant', async (req, res) => {
-    // Frontend (Admin Panel) se phone number aur naya status (active/suspended) aayega
     const { phone, status } = req.body; 
-    
-    // Agar by chance admin panel se 'status' na aaye, toh default 'active' maan lenge
     const finalStatus = status ? status : 'active'; 
 
     try {
         const { data, error } = await supabase
             .from('restaurants')
-            .update({ status: finalStatus }) // Database mein status update kar rahe hain
+            .update({ status: finalStatus }) 
             .eq('phone', phone);
 
         if (error) throw error;
