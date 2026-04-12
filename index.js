@@ -57,15 +57,39 @@ app.post('/send-otp', async (req, res) => {
   }
 });
 
-// 2. NAYA ROUTE: OTP Verify hone ke baad Basic Account Banane ke liye
+// 2. 🔥 FIX KIYA GAYA ROUTE: Duplicate Phone Number Checking ke sath
 app.post('/complete-registration', async (req, res) => {
     const { name, phone, password } = req.body;
     try {
-        const { data, error } = await supabase
+        // Pehle check karo ki is phone number se koi row pehle se hai kya
+        const { data: existingUser, error: fetchError } = await supabase
             .from('restaurants')
-            .insert([{ name, phone, password, status: 'incomplete' }]); // status 'incomplete' kyunki abhi 3-step bacha hai
+            .select('*')
+            .eq('phone', phone)
+            .maybeSingle(); 
 
-        if (error) throw error;
+        if (existingUser) {
+            // Agar account pehle se ban chuka hai (pending ya active hai) toh rok do
+            if (existingUser.status !== 'incomplete') {
+                 return res.status(400).json({ status: 'error', message: 'Ye mobile number pehle se registered hai!' });
+            } else {
+                // Agar incomplete hai (matlab user ne form beech mein chhod diya tha), toh nayi row mat banao, purani ko hi update kar do
+                const { error: updateError } = await supabase
+                    .from('restaurants')
+                    .update({ name: name, password: password })
+                    .eq('phone', phone);
+                
+                if (updateError) throw updateError;
+                return res.json({ status: 'success', message: 'Existing Account Updated!' });
+            }
+        }
+
+        // Agar bilkul naya number hai tabhi nayi row insert karo
+        const { error: insertError } = await supabase
+            .from('restaurants')
+            .insert([{ name, phone, password, status: 'incomplete' }]);
+
+        if (insertError) throw insertError;
         res.json({ status: 'success', message: 'Basic Account Created!' });
     } catch (error) {
         console.error("Supabase Error:", error.message);
@@ -73,7 +97,7 @@ app.post('/complete-registration', async (req, res) => {
     }
 });
 
-// 3. NAYA ROUTE: Login ke liye
+// 3. Login ke liye
 app.post('/login-partner', async (req, res) => {
     const { phone, password } = req.body;
     try {
@@ -94,33 +118,19 @@ app.post('/login-partner', async (req, res) => {
     }
 });
 
-// 4. 🔥 FIX KIYA GAYA ROUTE: 3-Step Restaurant Registration Details Save karne ke liye
+// 4. 3-Step Restaurant Registration Details Save karne ke liye
 app.post('/register-restaurant-details', async (req, res) => {
-    // Ab App se aane wala saara data properly receive hoga
     const { 
-        phone, 
-        restaurantName, 
-        ownerName, 
-        address, 
-        cuisine, 
-        foodType, 
-        timings, 
-        fssaiUrl, 
-        panUrl, 
-        aadhaarUrl, 
-        logoUrl, 
-        accName, 
-        accNo, 
-        ifsc 
+        phone, restaurantName, ownerName, address, cuisine, foodType, 
+        timings, fssaiUrl, panUrl, aadhaarUrl, logoUrl, accName, accNo, ifsc 
     } = req.body;
     
-    console.log("Aaya hua data:", req.body); // Debugging ke liye
+    console.log("Aaya hua data:", req.body);
 
     try {
         const { data, error } = await supabase
             .from('restaurants')
             .update({ 
-                // Yahan Left side mein Database ke column names hain, Right side mein App ka data
                 restaurant_name: restaurantName, 
                 owner_name: ownerName,
                 address: address, 
@@ -134,10 +144,10 @@ app.post('/register-restaurant-details', async (req, res) => {
                 bank_acc_name: accName,
                 bank_acc_no: accNo,
                 bank_ifsc: ifsc,
-                status: 'pending_verification' // Update hone ke baad admin ko pending dikhega
+                status: 'pending_verification' 
             })
             .eq('phone', phone)
-            .select(); // Isse error theek se catch hota hai
+            .select(); 
 
         if (error) {
             console.error("Supabase Error:", error);
@@ -151,7 +161,7 @@ app.post('/register-restaurant-details', async (req, res) => {
     }
 });
 
-// 5. NAYA ROUTE: Admin Panel ke liye sabhi restaurants fetch karna
+// 5. Admin Panel ke liye sabhi restaurants fetch karna
 app.get('/admin/restaurants', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -166,7 +176,7 @@ app.get('/admin/restaurants', async (req, res) => {
     }
 });
 
-// 6. UPDATED ROUTE: Admin Panel se Restaurant Approve aur Suspend karne ke liye
+// 6. Admin Panel se Restaurant Approve aur Suspend karne ke liye
 app.post('/admin/approve-restaurant', async (req, res) => {
     const { phone, status } = req.body; 
     const finalStatus = status ? status : 'active'; 
