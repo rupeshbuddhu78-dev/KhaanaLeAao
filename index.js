@@ -66,7 +66,7 @@ app.post('/complete-registration', async (req, res) => {
             .from('restaurants')
             .select('*')
             .eq('phone', phone)
-            .maybeSingle(); 
+            .single()
 
         if (existingUser) {
             // Agar account pehle se ban chuka hai (pending ya active hai) toh rok do
