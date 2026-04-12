@@ -9,6 +9,65 @@ body {
     display: flex;
     background-color: #f4f6f9;
 }
+/* =========================================
+   📱 MOBILE RESPONSIVE DESIGN (MAGIC!)
+   ========================================= */
+@media (max-width: 768px) {
+    body {
+        flex-direction: column;
+    }
+
+    /* Sidebar ko top navigation bana diya */
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+    }
+
+    .menu {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 10px 0;
+    }
+
+    .menu li {
+        padding: 10px 15px;
+        font-size: 14px;
+        border-left: none;
+        border-bottom: 4px solid transparent;
+    }
+
+    /* Active menu item ke niche line aayegi */
+    .menu li:hover, .menu li.active {
+        border-left: none;
+        border-bottom: 4px solid #e74c3c;
+    }
+
+    /* Main content ko full width de di */
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding: 15px;
+    }
+
+    /* Header ko center kar diya */
+    header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+
+    /* Stats Cards ko ek ke niche ek (stack) kar diya */
+    .stats-grid {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .card {
+        width: 100%;
+    }
+}
 
 /* SIDEBAR DESIGN */
 .sidebar {
