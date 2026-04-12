@@ -57,6 +57,8 @@ app.post('/send-otp', async (req, res) => {
   }
 });
 
+
+
 // 2. 🔥 FIX KIYA GAYA ROUTE: Duplicate Phone Number Checking ke sath
 app.post('/complete-registration', async (req, res) => {
     const { name, phone, password } = req.body;
@@ -218,6 +220,48 @@ app.post('/admin/approve-restaurant', async (req, res) => {
         res.json({ status: 'success', message: `Restaurant marked as ${finalStatus.toUpperCase()} Successfully!` });
     } catch (error) {
         console.error("Admin Status Update Error:", error.message);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+// ----------------------------------------------------
+// 🔥 MAIN DASHBOARD ROUTES
+// ----------------------------------------------------
+
+// 8. Dashboard pe Restaurant ka naam aur status fetch karne ke liye
+app.get('/partner/dashboard/:phone', async (req, res) => {
+    const { phone } = req.params;
+    try {
+        const { data, error } = await supabase
+            .from('restaurants')
+            .select('restaurant_name, is_online') 
+            .eq('phone', phone)
+            .maybeSingle();
+
+        if (error) throw error;
+        if (data) {
+            res.json({ status: 'success', data: data });
+        } else {
+            res.status(404).json({ status: 'error', message: 'Restaurant not found' });
+        }
+    } catch (error) {
+        console.error("Dashboard Fetch Error:", error.message);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// 9. Switch ON/OFF karne par Database update karne ke liye
+app.post('/partner/update-status', async (req, res) => {
+    const { phone, is_online } = req.body;
+    try {
+        const { data, error } = await supabase
+            .from('restaurants')
+            .update({ is_online: is_online })
+            .eq('phone', phone);
+
+        if (error) throw error;
+        res.json({ status: 'success', message: 'Status updated to ' + (is_online ? 'Online' : 'Offline') });
+    } catch (error) {
+        console.error("Update Status Error:", error.message);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
