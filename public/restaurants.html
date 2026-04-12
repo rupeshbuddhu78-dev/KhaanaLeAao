@@ -32,7 +32,7 @@
         .btn-primary { background: #2980b9; }
         .btn-success { background: #27ae60; }
         .btn-danger { background: #c0392b; }
-        .btn-warning { background: #f39c12; } /* Yellow for Reject */
+        .btn-warning { background: #f39c12; }
         .btn-back { background: #7f8c8d; }
 
         /* Filter Tabs */
@@ -64,27 +64,20 @@
         .tab-link.active { color: #e74c3c; border-bottom: 3px solid #e74c3c; font-weight: bold; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        
-        .activity-box { background: #fdf2e9; padding: 15px; border-left: 4px solid #e67e22; border-radius: 4px; }
-        .doc-grid { display: flex; gap: 15px; margin-top: 15px; }
-        .doc-card { background: #f4f6f9; padding: 15px; border-radius: 6px; border: 1px solid #ddd; flex: 1; text-align: center; }
-        .doc-card button { margin-top: 10px; padding: 5px 10px; cursor: pointer; background: #34495e; color: white; border: none; border-radius: 4px; }
-        .input-box { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100%; max-width: 200px;}
+
+        /* NEW DOCUMENT SECTION STYLES */
+        .doc-list { display: flex; flex-direction: column; gap: 20px; margin-top: 15px; }
+        .doc-item { background: #fff; padding: 20px; border-radius: 10px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .doc-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .doc-info h4 { color: #2c3e50; font-size: 18px; }
+        .doc-preview-container { background: #f9f9f9; border-radius: 8px; overflow: hidden; border: 1px dashed #ccc; text-align: center; min-height: 200px; display: flex; align-items: center; justify-content: center; }
+        .doc-preview-img { max-width: 100%; max-height: 500px; object-fit: contain; }
+        .no-doc-box { color: #7f8c8d; padding: 40px; text-align: center; background: #fff; border-radius: 8px; }
 
         @media (max-width: 768px) {
-            body { flex-direction: column; }
             .sidebar { width: 100%; height: auto; position: relative; }
-            .menu { display: flex; flex-wrap: wrap; justify-content: center; padding: 10px 0; }
-            .menu li { border-left: none; border-bottom: 4px solid transparent; }
-            .menu li a { padding: 10px 15px; font-size: 14px; }
-            .menu li:hover, .menu li.active { border-left: none; border-bottom: 4px solid #e74c3c; }
             .main-content { margin-left: 0; width: 100%; padding: 15px; }
-            header { flex-direction: column; gap: 10px; text-align: center; }
-            .header-actions { flex-direction: column; width: 100%; }
-            .search-box { width: 100%; }
-            .filter-tabs { flex-wrap: wrap; }
-            .doc-grid { flex-direction: column; }
-            .inner-tabs { overflow-x: auto; white-space: nowrap; }
+            .menu { display: flex; flex-wrap: wrap; justify-content: center; }
         }
     </style>
 </head>
@@ -134,7 +127,7 @@
                         </tr>
                     </thead>
                     <tbody id="restaurantTableBody">
-                        <tr><td colspan="5" style="text-align:center;">Loading Data from Server...</td></tr>
+                        <tr><td colspan="5" style="text-align:center;">Fetching Live Data... ⏳</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -143,62 +136,53 @@
         <div id="detailsView" style="display: none;">
             <header>
                 <div>
-                    <button class="btn-back" onclick="closeDetails()"><i class="fa-solid fa-arrow-left"></i> Back to List</button>
+                    <button class="btn-back" onclick="closeDetails()"><i class="fa-solid fa-arrow-left"></i> Back</button>
                     <h1 id="detailTitle" style="display: inline-block; margin-left: 15px;">Restaurant Name</h1>
                 </div>
                 <div class="action-group">
                     <button class="btn-success" id="btnApprove"><i class="fa-solid fa-check"></i> Approve</button>
-                    <button class="btn-warning" id="btnReject"><i class="fa-solid fa-rotate-left"></i> Reject (Incomplete)</button>
+                    <button class="btn-warning" id="btnReject"><i class="fa-solid fa-rotate-left"></i> Reject</button>
                     <button class="btn-danger" id="btnSuspend"><i class="fa-solid fa-ban"></i> Suspend</button>
                 </div>
             </header>
 
             <div class="inner-tabs">
                 <button class="tab-link active" onclick="switchTab(event, 'tab-overview')">📊 Overview</button>
-                <button class="tab-link" onclick="switchTab(event, 'tab-docs')">📄 Documents</button>
+                <button class="tab-link" onclick="switchTab(event, 'tab-docs')">📄 Documents & Verification</button>
                 <button class="tab-link" onclick="switchTab(event, 'tab-settings')">⚙️ Settings</button>
             </div>
 
             <div class="tab-content-area">
                 <div id="tab-overview" class="tab-content active">
-                    <h3>Restaurant Info</h3>
-                    <br>
+                    <h3>Basic Info</h3><br>
                     <p>Phone Number: <strong id="detailPhone"></strong></p>
-                    <p>Address: <strong id="detailAddress"></strong></p>
-                    <br>
-                    <p>Current Status: <span id="detailStatusBadge" class="badge"></span></p>
+                    <p>Address: <strong id="detailAddress"></strong></p><br>
+                    <p>Status: <span id="detailStatusBadge" class="badge"></span></p>
                 </div>
                 
                 <div id="tab-docs" class="tab-content">
-                    <h3>Verification Documents</h3>
-                    <div class="doc-grid">
-                        <div class="doc-card">
-                            <strong>Cloudinary Document</strong><br>
-                            <button id="viewDocBtn">View Live Document</button>
+                    <h3>Uploaded Documents</h3>
+                    <div id="documentContainer" class="doc-list">
                         </div>
-                    </div>
                 </div>
 
                 <div id="tab-settings" class="tab-content">
-                    <h3>Admin Settings for this Restaurant</h3>
-                    <br>
-                    <p style="color: gray;"><i>Coming Soon in Phase 2</i></p>
+                    <h3>Admin Controls</h3>
+                    <p style="color: gray; margin-top: 10px;"><i>Coming Soon: Edit menu, change commission, etc.</i></p>
                 </div>
             </div>
         </div>
-
     </div>
 
     <script>
         const SERVER_URL = 'https://khaanaleaao.onrender.com';
-        
         let allRestaurantsData = []; 
 
         document.addEventListener('DOMContentLoaded', loadRestaurants);
 
         async function loadRestaurants() {
             let tbody = document.getElementById("restaurantTableBody");
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Fetching Live Data... ⏳</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>';
 
             try {
                 const response = await fetch(`${SERVER_URL}/admin/restaurants`);
@@ -208,11 +192,10 @@
                     allRestaurantsData = result.data;
                     populateTable(allRestaurantsData);
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: red;">Failed to load data!</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: red;">Error loading data</td></tr>';
                 }
             } catch (error) {
-                console.error("Error fetching data:", error);
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: red;">Server connection error!</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: red;">Server error</td></tr>';
             }
         }
 
@@ -220,25 +203,18 @@
             let tbody = document.getElementById("restaurantTableBody");
             tbody.innerHTML = ""; 
 
-            if (restaurants.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No restaurants found.</td></tr>';
-                return;
-            }
-
             restaurants.forEach((rest, index) => {
-                let displayStatus = rest.status;
-                if(rest.status === 'pending_verification') displayStatus = 'Pending';
-                
+                let displayStatus = rest.status === 'pending_verification' ? 'Pending' : rest.status;
                 let row = `
                     <tr>
-                        <td><strong>${rest.restaurant_name || 'N/A'}</strong><br><small>${rest.address || 'Location N/A'}</small></td>
+                        <td><strong>${rest.restaurant_name || 'N/A'}</strong><br><small>${rest.address || 'N/A'}</small></td>
                         <td>${rest.phone}</td>
                         <td>
-                            ${rest.document_url ? `<a href="${rest.document_url}" target="_blank" class="badge docs-ok">View Docs</a>` : `<span class="badge incomplete">No Docs</span>`}
+                            ${rest.document_url ? `<a href="${rest.document_url}" target="_blank" class="badge docs-ok">Link Attached</a>` : `<span class="badge incomplete">No Docs</span>`}
                         </td>
                         <td><span class="badge ${rest.status}">${displayStatus.toUpperCase()}</span></td>
                         <td>
-                            <button class="action-btn view" onclick="openDetails(${index})">
+                            <button class="action-btn" onclick="openDetails(${index})">
                                 <i class="fa-solid fa-gear"></i> Manage
                             </button>
                         </td>
@@ -250,7 +226,6 @@
 
         function openDetails(index) {
             let rest = allRestaurantsData[index];
-
             document.getElementById('listView').style.display = 'none';
             document.getElementById('detailsView').style.display = 'block';
             
@@ -262,15 +237,37 @@
             badge.className = `badge ${rest.status}`;
             badge.innerText = rest.status.toUpperCase();
 
-            let viewDocBtn = document.getElementById('viewDocBtn');
+            // --- DOCUMENT LOGIC ---
+            let docContainer = document.getElementById('documentContainer');
+            docContainer.innerHTML = ""; // Clear old docs
+
             if(rest.document_url) {
-                viewDocBtn.style.display = 'inline-block';
-                viewDocBtn.onclick = () => window.open(rest.document_url, '_blank');
+                // Extension Handling: Agar Cloudinary PDF hai to preview ke liye use image format mein convert kar sakte hain
+                // Yahan hum direct link aur preview dikha rahe hain
+                let previewUrl = rest.document_url;
+                if(previewUrl.toLowerCase().endsWith('.pdf')) {
+                    // Cloudinary specific trick to get first page of PDF as image
+                    previewUrl = previewUrl.replace('.pdf', '.png');
+                }
+
+                docContainer.innerHTML = `
+                    <div class="doc-item">
+                        <div class="doc-info">
+                            <h4><i class="fa-solid fa-file-contract"></i> Registration Document</h4>
+                            <a href="${rest.document_url}" target="_blank" class="btn-primary" style="text-decoration:none;">
+                                <i class="fa-solid fa-expand"></i> Direct View (Full Screen)
+                            </a>
+                        </div>
+                        <div class="doc-preview-container">
+                            <img src="${previewUrl}" class="doc-preview-img" onerror="this.src='https://placehold.co/600x400?text=Preview+Not+Available+Check+Direct+View'">
+                        </div>
+                    </div>
+                `;
             } else {
-                viewDocBtn.style.display = 'none';
+                docContainer.innerHTML = `<div class="no-doc-box"><h3>No documents uploaded.</h3><p>Owner needs to upload documents for verification.</p></div>`;
             }
 
-            // Buttons Mapping
+            // Buttons Actions
             document.getElementById('btnApprove').onclick = () => updateRestaurantStatus(rest.phone, 'active');
             document.getElementById('btnReject').onclick = () => updateRestaurantStatus(rest.phone, 'incomplete');
             document.getElementById('btnSuspend').onclick = () => updateRestaurantStatus(rest.phone, 'suspended');
@@ -283,37 +280,30 @@
         }
 
         async function updateRestaurantStatus(phone, newStatus) {
-            let confirmMsg = "Kya aap status ko '" + newStatus.toUpperCase() + "' karna chahte hain?";
-            if(!confirm(confirmMsg)) return;
-
+            if(!confirm(`Change status to ${newStatus.toUpperCase()}?`)) return;
             try {
                 const response = await fetch(`${SERVER_URL}/admin/approve-restaurant`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone: phone, status: newStatus }) 
                 });
-                
                 const result = await response.json();
-                
                 if(result.status === 'success') {
-                    alert(`Success: Status changed to ${newStatus.toUpperCase()}`);
+                    alert("Status Updated Successfully!");
                     closeDetails();
                 } else {
                     alert("Error: " + result.message);
                 }
             } catch (error) {
-                console.error("Update Error:", error);
-                alert("Server issue.");
+                alert("Server Connection Error");
             }
         }
 
         function switchTab(event, tabId) {
             let contents = document.getElementsByClassName("tab-content");
             for (let i = 0; i < contents.length; i++) contents[i].classList.remove("active");
-
             let links = document.getElementsByClassName("tab-link");
             for (let i = 0; i < links.length; i++) links[i].classList.remove("active");
-
             document.getElementById(tabId).classList.add("active");
             event.currentTarget.classList.add("active");
         }
