@@ -104,9 +104,9 @@ app.post('/register-restaurant-details', async (req, res) => {
         const { data, error } = await supabase
             .from('restaurants')
             .update({ 
-                restaurant_name: restaurantName, 
+                name: restaurantName, // 🔥 FIX YAHAN HAI: restaurant_name ko hata kar name kar diya
                 address: address, 
-                fssai_url: documentUrl, // 🔥 FIX YAHAN HAI: document_url ko hatakar fssai_url kar diya
+                fssai_url: documentUrl, 
                 status: 'pending_verification' // Admin approval ke liye
             })
             .eq('phone', phone); // Phone number se check kar rahe hain
