@@ -106,7 +106,7 @@ app.post('/register-restaurant-details', async (req, res) => {
             .update({ 
                 restaurant_name: restaurantName, 
                 address: address, 
-                document_url: documentUrl,
+                fssai_url: documentUrl, // 🔥 FIX YAHAN HAI: document_url ko hatakar fssai_url kar diya
                 status: 'pending_verification' // Admin approval ke liye
             })
             .eq('phone', phone); // Phone number se check kar rahe hain
