@@ -94,9 +94,25 @@ app.post('/login-partner', async (req, res) => {
     }
 });
 
-// 4. NAYA ROUTE: 3-Step Restaurant Registration Details Save karne ke liye
+// 4. 🔥 FIX KIYA GAYA ROUTE: 3-Step Restaurant Registration Details Save karne ke liye
 app.post('/register-restaurant-details', async (req, res) => {
-    const { phone, restaurantName, address, documentUrl } = req.body;
+    // Ab App se aane wala saara data properly receive hoga
+    const { 
+        phone, 
+        restaurantName, 
+        ownerName, 
+        address, 
+        cuisine, 
+        foodType, 
+        timings, 
+        fssaiUrl, 
+        panUrl, 
+        aadhaarUrl, 
+        logoUrl, 
+        accName, 
+        accNo, 
+        ifsc 
+    } = req.body;
     
     console.log("Aaya hua data:", req.body); // Debugging ke liye
 
@@ -104,10 +120,21 @@ app.post('/register-restaurant-details', async (req, res) => {
         const { data, error } = await supabase
             .from('restaurants')
             .update({ 
-                restaurant_name: restaurantName, // 🔥 FIX YAHAN HAI: Ab ye tumhare database column se match karega
+                // Yahan Left side mein Database ke column names hain, Right side mein App ka data
+                restaurant_name: restaurantName, 
+                owner_name: ownerName,
                 address: address, 
-                fssai_url: documentUrl, 
-                status: 'pending_verification'
+                cuisine_type: cuisine,
+                food_type: foodType,
+                timings: timings,
+                fssai_url: fssaiUrl, 
+                pan_url: panUrl,
+                aadhaar_url: aadhaarUrl,
+                logo_url: logoUrl,
+                bank_acc_name: accName,
+                bank_acc_no: accNo,
+                bank_ifsc: ifsc,
+                status: 'pending_verification' // Update hone ke baad admin ko pending dikhega
             })
             .eq('phone', phone)
             .select(); // Isse error theek se catch hota hai
