@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khaana Admin Panel</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>🍔 KhaanaAdmin</h2>
+        <ul class="menu">
+            <li class="active"><i class="fa-solid fa-house"></i> Dashboard</li>
+            <li><i class="fa-solid fa-users"></i> Users</li>
+            <li><i class="fa-solid fa-utensils"></i> Restaurants</li>
+            <li><i class="fa-solid fa-box-open"></i> Orders</li>
+            <li><i class="fa-solid fa-motorcycle"></i> Delivery</li>
+            <li><i class="fa-solid fa-gear"></i> Settings</li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <header>
+            <h1>Dashboard Overview</h1>
+            <div class="admin-profile">
+                <span>Welcome, Super Admin</span>
+            </div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="card">
+                <div class="card-info">
+                    <h3>Total Users</h3>
+                    <p id="totalUsers">0</p>
+                </div>
+                <i class="fa-solid fa-users card-icon"></i>
+            </div>
+            
+            <div class="card">
+                <div class="card-info">
+                    <h3>Restaurants</h3>
+                    <p id="totalRestaurants">0</p>
+                </div>
+                <i class="fa-solid fa-utensils card-icon"></i>
+            </div>
+
+            <div class="card">
+                <div class="card-info">
+                    <h3>Total Orders</h3>
+                    <p id="totalOrders">0</p>
+                </div>
+                <i class="fa-solid fa-box-open card-icon"></i>
+            </div>
+
+            <div class="card">
+                <div class="card-info">
+                    <h3>Total Revenue</h3>
+                    <p id="totalRevenue">₹0</p>
+                </div>
+                <i class="fa-solid fa-wallet card-icon"></i>
+            </div>
+        </div>
+
+        <div class="recent-section">
+            <h2>Recent Activities</h2>
+            <div class="activity-box">
+                <p>✅ New Restaurant "Sharma Dhaba" registered.</p>
+                <p>📦 Order #1024 delivered successfully.</p>
+                <p>👤 New user Rahul signed up.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
