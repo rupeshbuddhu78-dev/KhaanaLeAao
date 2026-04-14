@@ -425,33 +425,36 @@ app.post('/add-menu-item', async (req, res) => {
 });
 
 // ==========================================
-// 🔥 API 15: UPDATE ITEM AVAILABILITY (Toggle Switch Ke Liye Fix Ho Gaya)
+// 🔥 API 15: UPDATE ITEM AVAILABILITY (PERFECT BOOLEAN & ID FIX)
 // ==========================================
 app.post('/partner/update-item-availability', async (req, res) => {
     const { id, is_available } = req.body;
     
     // Console log to check what is coming from Android
-    console.log(`🚀 [Switch Debug] ID: ${id} | Type: ${typeof id} | Status: ${is_available}`);
+    console.log(`🚀 [Switch Debug] Original ID: ${id} | Type: ${typeof id} | Status: ${is_available}`);
 
     try {
-        // Boolean conversion fix - strictly checking for true string or boolean
+        // String ID ko strictly Number mein convert kar diya
+        const numericId = parseInt(id, 10);
+        
+        // Boolean conversion fix - checking for strict boolean or string equivalents
         const booleanStatus = (is_available === true || is_available === 'true');
 
         const { data, error } = await supabase
             .from('menu_items')
             .update({ is_available: booleanStatus })
-            .eq('id', id)
+            .eq('id', numericId)
             .select(); // Fetch updated row
 
         if (error) throw error;
 
         // Check if item was actually found and updated
         if (!data || data.length === 0) {
-            console.log(`❌ [Switch Error] Database mein ID ${id} match nahi hui!`);
+            console.log(`❌ [Switch Error] Database mein ID ${numericId} match nahi hui!`);
             return res.status(404).json({ status: 'error', message: 'Item not found in DB' });
         }
 
-        console.log(`✅ [Switch Success] ID ${id} ab ${booleanStatus} ho gaya hai!`);
+        console.log(`✅ [Switch Success] ID ${numericId} ab ${booleanStatus} ho gaya hai!`);
         res.json({ status: 'success', message: 'Item availability updated!' });
 
     } catch (error) {
@@ -461,11 +464,11 @@ app.post('/partner/update-item-availability', async (req, res) => {
 });
 
 // ==========================================
-// 🔥 API 16: DELETE MENU ITEM
+// 🔥 API 16: DELETE MENU ITEM (ID PARSE FIX)
 // ==========================================
 app.delete('/partner/delete-item/:id', async (req, res) => {
     try {
-        const itemId = req.params.id;
+        const itemId = parseInt(req.params.id, 10);
 
         await supabase.from('item_variants').delete().eq('item_id', itemId);
         await supabase.from('item_addons').delete().eq('item_id', itemId);
@@ -480,7 +483,7 @@ app.delete('/partner/delete-item/:id', async (req, res) => {
 });
 
 // ==========================================
-// 🔥 API 17: UPDATE FULL MENU ITEM (Edit Button Ke Liye)
+// 🔥 API 17: UPDATE FULL MENU ITEM (ID PARSE FIX)
 // ==========================================
 app.post('/partner/update-menu-item', async (req, res) => {
     try {
@@ -489,25 +492,27 @@ app.post('/partner/update-menu-item', async (req, res) => {
             prep_time, image_url, base_price, has_variants, variants, addons 
         } = req.body;
 
+        const numericId = parseInt(id, 10);
+
         const { error: updateErr } = await supabase
             .from('menu_items')
             .update({
                 item_name, category, description, is_veg, 
                 prep_time, image_url, base_price, has_variants
             })
-            .eq('id', id);
+            .eq('id', numericId);
 
         if (updateErr) throw updateErr;
 
-        await supabase.from('item_variants').delete().eq('item_id', id);
-        await supabase.from('item_addons').delete().eq('item_id', id);
+        await supabase.from('item_variants').delete().eq('item_id', numericId);
+        await supabase.from('item_addons').delete().eq('item_id', numericId);
 
         if (has_variants && variants && variants.length > 0) {
-            const vData = variants.map(v => ({ item_id: id, variant_name: v.name || v.variant_name, price: v.price }));
+            const vData = variants.map(v => ({ item_id: numericId, variant_name: v.name || v.variant_name, price: v.price }));
             await supabase.from('item_variants').insert(vData);
         }
         if (addons && addons.length > 0) {
-            const aData = addons.map(a => ({ item_id: id, addon_name: a.name || a.addon_name, price: a.price }));
+            const aData = addons.map(a => ({ item_id: numericId, addon_name: a.name || a.addon_name, price: a.price }));
             await supabase.from('item_addons').insert(aData);
         }
 
