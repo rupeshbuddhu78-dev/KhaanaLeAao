@@ -287,7 +287,7 @@ app.get('/partner/categories/:phone', async (req, res) => {
     }
 });
 
-// 12. Naya Menu Item (Dish) Add karne ke liye (Old logic safe rakhne ke liye)
+// 12. Naya Menu Item (Dish) Add karne ke liye
 app.post('/partner/add-item', async (req, res) => {
     const { 
         restaurant_phone, category_id, item_name, description, 
@@ -311,12 +311,10 @@ app.post('/partner/add-item', async (req, res) => {
 });
 
 // ==========================================
-// 🔥 API 13: Pura Menu Fetch karne ke liye (SAFE FIX FOR PRICES)
-// Server crash se bachane ke liye manual fetch lagaya hai.
+// 🔥 API 13: Pura Menu Fetch karne ke liye
 // ==========================================
 app.get('/partner/menu/:phone', async (req, res) => {
     try {
-        // Step 1: Pehle saare items fetch karo
         const { data: menuItems, error: menuErr } = await supabase
             .from('menu_items')
             .select('*')
@@ -328,10 +326,8 @@ app.get('/partner/menu/:phone', async (req, res) => {
             return res.json({ status: 'success', data: [] });
         }
 
-        // Step 2: Sab items ki IDs nikalo taaki unke prices fetch kar sakein
         const itemIds = menuItems.map(item => item.id);
 
-        // Step 3: Variants aur Addons fetch karo
         const { data: variants, error: varErr } = await supabase
             .from('item_variants')
             .select('*')
@@ -342,7 +338,6 @@ app.get('/partner/menu/:phone', async (req, res) => {
             .select('*')
             .in('item_id', itemIds);
 
-        // Step 4: Items ke andar unke respective variants/addons attach kar do
         const completeMenu = menuItems.map(item => {
             return {
                 ...item,
@@ -373,7 +368,6 @@ app.post('/add-menu-item', async (req, res) => {
             return res.status(400).json({ error: "Restaurant phone is missing from app!" });
         }
 
-        // Available True rakhein by default
         const safeIsAvailable = is_available !== undefined ? is_available : true;
 
         const { data: menuItem, error: itemError } = await supabase
@@ -425,46 +419,74 @@ app.post('/add-menu-item', async (req, res) => {
 });
 
 // ==========================================
-// 🔥 API 15: UPDATE ITEM AVAILABILITY (PERFECT BOOLEAN & ID FIX)
+// 🔥 API 15A: UPDATE ITEM AVAILABILITY (Main Dish ke liye)
 // ==========================================
 app.post('/partner/update-item-availability', async (req, res) => {
     const { id, is_available } = req.body;
     
-    // Console log to check what is coming from Android
-    console.log(`🚀 [Switch Debug] Original ID: ${id} | Type: ${typeof id} | Status: ${is_available}`);
+    console.log(`🚀 [Item Switch Debug] ID: ${id} | Type: ${typeof id} | Status: ${is_available}`);
 
     try {
-        // String ID ko strictly Number mein convert kar diya
         const numericId = parseInt(id, 10);
-        
-        // Boolean conversion fix - checking for strict boolean or string equivalents
         const booleanStatus = (is_available === true || is_available === 'true');
 
         const { data, error } = await supabase
-            .from('menu_items')
+            .from('menu_items')  // Yahan menu_items table update hoti hai
             .update({ is_available: booleanStatus })
             .eq('id', numericId)
-            .select(); // Fetch updated row
+            .select(); 
 
         if (error) throw error;
 
-        // Check if item was actually found and updated
         if (!data || data.length === 0) {
-            console.log(`❌ [Switch Error] Database mein ID ${numericId} match nahi hui!`);
+            console.log(`❌ [Item Switch Error] Database mein ID ${numericId} match nahi hui!`);
             return res.status(404).json({ status: 'error', message: 'Item not found in DB' });
         }
 
-        console.log(`✅ [Switch Success] ID ${numericId} ab ${booleanStatus} ho gaya hai!`);
+        console.log(`✅ [Item Switch Success] ID ${numericId} ab ${booleanStatus} ho gaya hai!`);
         res.json({ status: 'success', message: 'Item availability updated!' });
 
     } catch (error) {
-        console.error("❌ [Switch API Crash]:", error.message);
+        console.error("❌ [Item Switch API Crash]:", error.message);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
 
 // ==========================================
-// 🔥 API 16: DELETE MENU ITEM (ID PARSE FIX)
+// 🔥 API 15B: UPDATE VARIANT AVAILABILITY (Naya Add Kiya)
+// Agar app se sirf "Half/Full" ko off karna ho toh isko use karna
+// ==========================================
+app.post('/partner/update-variant-availability', async (req, res) => {
+    const { id, is_available } = req.body;
+    console.log(`🚀 [Variant Switch Debug] ID: ${id} | Status: ${is_available}`);
+
+    try {
+        const numericId = parseInt(id, 10);
+        const booleanStatus = (is_available === true || is_available === 'true');
+
+        const { data, error } = await supabase
+            .from('item_variants') // Yeh directly item_variants table ko update karega
+            .update({ is_available: booleanStatus })
+            .eq('id', numericId)
+            .select(); 
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+            return res.status(404).json({ status: 'error', message: 'Variant not found in DB' });
+        }
+
+        console.log(`✅ [Variant Switch Success] ID ${numericId} ab ${booleanStatus} ho gaya hai!`);
+        res.json({ status: 'success', message: 'Variant availability updated!' });
+
+    } catch (error) {
+        console.error("❌ [Variant Switch API Crash]:", error.message);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// ==========================================
+// 🔥 API 16: DELETE MENU ITEM 
 // ==========================================
 app.delete('/partner/delete-item/:id', async (req, res) => {
     try {
@@ -483,7 +505,7 @@ app.delete('/partner/delete-item/:id', async (req, res) => {
 });
 
 // ==========================================
-// 🔥 API 17: UPDATE FULL MENU ITEM (ID PARSE FIX)
+// 🔥 API 17: UPDATE FULL MENU ITEM 
 // ==========================================
 app.post('/partner/update-menu-item', async (req, res) => {
     try {
