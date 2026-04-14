@@ -104,7 +104,9 @@ app.post('/login-partner', async (req, res) => {
             .eq('password', password)
             .maybeSingle();
 
-        if (error) throw error;
+        if (error) {
+            throw error;
+        }
 
         if (data) {
             res.json({ status: 'success', partner: data });
@@ -164,6 +166,7 @@ app.post('/check-status', async (req, res) => {
             .maybeSingle();
 
         if (error) throw error;
+
         if (data) {
             res.json({ status: 'success', dbStatus: data.status });
         } else {
@@ -252,7 +255,7 @@ app.post('/partner/update-status', async (req, res) => {
 // 🔥 MENU MANAGEMENT ROUTES
 // ----------------------------------------------------
 
-// 10. Nayi Category Add karne ke liye
+// 10. Nayi Category Add karne ke liye (Jaise: Starters, Main Course)
 app.post('/partner/add-category', async (req, res) => {
     const { restaurant_phone, name, sort_order } = req.body;
     try {
@@ -268,14 +271,14 @@ app.post('/partner/add-category', async (req, res) => {
     }
 });
 
-// 11. Saari Categories Fetch karne ke liye
+// 11. Saari Categories Fetch karne ke liye (App mein dikhane ke liye)
 app.get('/partner/categories/:phone', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('menu_categories')
             .select('*')
             .eq('restaurant_phone', req.params.phone)
-            .order('sort_order', { ascending: true });
+            .order('sort_order', { ascending: true }); // Line se dikhane ke liye
             
         if (error) throw error;
         res.json({ status: 'success', data });
@@ -284,7 +287,30 @@ app.get('/partner/categories/:phone', async (req, res) => {
     }
 });
 
-// 12. Pura Menu Fetch karne ke liye
+// 12. Naya Menu Item (Dish) Add karne ke liye (Old logic safe rakhne ke liye)
+app.post('/partner/add-item', async (req, res) => {
+    const { 
+        restaurant_phone, category_id, item_name, description, 
+        is_veg, base_price, image_url, is_available, has_variants, prep_time 
+    } = req.body;
+    
+    try {
+        const { data, error } = await supabase
+            .from('menu_items')
+            .insert([{ 
+                restaurant_phone, category_id, item_name, description, 
+                is_veg, base_price, image_url, is_available, has_variants, prep_time 
+            }])
+            .select();
+            
+        if (error) throw error;
+        res.json({ status: 'success', message: 'Dish added successfully!', data });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// 13. Pura Menu Fetch karne ke liye (Dishes dikhane ke liye)
 app.get('/partner/menu/:phone', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -300,11 +326,11 @@ app.get('/partner/menu/:phone', async (req, res) => {
 });
 
 // ==========================================
-// 🔥 API: ADD MENU ITEM (MODIFIED FOR VARIANTS & ADDONS)
+// 🔥 API 14: ADD MENU ITEM (UPDATED WITH VARIANTS & ADDONS)
 // ==========================================
 app.post('/add-menu-item', async (req, res) => {
     try {
-        // 1. Extract everything from Android request
+        // 1. Android app se jo keys aa rahi hain, usme variants aur addons bhi jode
         const { 
             restaurant_phone, 
             item_name, 
@@ -317,39 +343,45 @@ app.post('/add-menu-item', async (req, res) => {
             has_variants,
             base_price,
             price,
-            variants, // Naya: Array of variants from App
-            addons    // Naya: Array of addons from App
+            variants, // Naya
+            addons    // Naya
         } = req.body;
+
+        console.log("Receiving new dish for phone:", restaurant_phone);
 
         if (!restaurant_phone) {
             return res.status(400).json({ error: "Restaurant phone is missing from app!" });
         }
 
-        // STEP 1: Insert main item into 'menu_items' and get the new ID
+        // 2. Direct database mein insert karo (Aur id return lo .select().single() se)
         const { data: menuItem, error: itemError } = await supabase
             .from('menu_items')
             .insert([
                 {
-                    restaurant_phone,
-                    item_name,
-                    category,
-                    description,
-                    is_veg,
-                    is_available,
-                    prep_time,
-                    image_url,
-                    has_variants,
-                    base_price: base_price || price || null
+                    restaurant_phone: restaurant_phone,
+                    item_name: item_name,
+                    category: category,
+                    description: description,
+                    is_veg: is_veg,
+                    is_available: is_available,
+                    prep_time: prep_time,
+                    image_url: image_url,
+                    has_variants: has_variants,
+                    base_price: base_price || null,
+                    price: price || null
                 }
             ])
             .select()
             .single();
 
-        if (itemError) throw itemError;
+        if (itemError) {
+            console.error("Supabase Insert Error:", itemError);
+            return res.status(500).json({ error: "Database error: " + itemError.message });
+        }
 
-        const newDishId = menuItem.id; // Nayi dish ki ID mil gayi
+        const newDishId = menuItem.id;
 
-        // STEP 2: Agar variants hain, unhe 'item_variants' table mein dalo
+        // 3. Agar variants hain, unhe 'item_variants' table mein dalo
         if (has_variants && variants && variants.length > 0) {
             const variantsToInsert = variants.map(v => ({
                 item_id: newDishId,
@@ -360,8 +392,7 @@ app.post('/add-menu-item', async (req, res) => {
             if (variantErr) console.error("Variant Insert Error:", variantErr.message);
         }
         
-
-        // STEP 3: Agar addons hain, unhe 'item_addons' table mein dalo
+        // 4. Agar addons hain, unhe 'item_addons' table mein dalo
         if (addons && addons.length > 0) {
             const addonsToInsert = addons.map(a => ({
                 item_id: newDishId,
@@ -372,14 +403,93 @@ app.post('/add-menu-item', async (req, res) => {
             if (addonErr) console.error("Addon Insert Error:", addonErr.message);
         }
 
-        res.status(200).json({ status: "success", message: "Dish with variants and addons saved!" });
+        res.status(200).json({ status: "success", message: "Dish saved with variants and addons successfully!" });
 
     } catch (error) {
-        console.error("Server Crash Error:", error.message);
-        res.status(500).json({ error: error.message });
+        console.error("Server Crash Error:", error);
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
+// ==========================================
+// 🔥 API 15: UPDATE ITEM AVAILABILITY (Toggle Switch Ke Liye)
+// ==========================================
+app.post('/partner/update-item-availability', async (req, res) => {
+    const { id, is_available } = req.body;
+    try {
+        const { error } = await supabase
+            .from('menu_items')
+            .update({ is_available })
+            .eq('id', id);
+
+        if (error) throw error;
+        res.json({ status: 'success', message: 'Item availability updated!' });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// ==========================================
+// 🔥 API 16: DELETE MENU ITEM (Variants ke saath delete karne ke liye)
+// ==========================================
+app.delete('/partner/delete-item/:id', async (req, res) => {
+    try {
+        const itemId = req.params.id;
+
+        // Pehle child tables (variants/addons) ko saaf karo
+        await supabase.from('item_variants').delete().eq('item_id', itemId);
+        await supabase.from('item_addons').delete().eq('item_id', itemId);
+        
+        // Fir main item ko delete karo
+        const { error } = await supabase.from('menu_items').delete().eq('id', itemId);
+        if (error) throw error;
+
+        res.json({ status: 'success', message: 'Item deleted successfully!' });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// ==========================================
+// 🔥 API 17: UPDATE FULL MENU ITEM (Edit Button Ke Liye)
+// ==========================================
+app.post('/partner/update-menu-item', async (req, res) => {
+    try {
+        const { 
+            id, item_name, category, description, is_veg, 
+            prep_time, image_url, base_price, has_variants, variants, addons 
+        } = req.body;
+
+        // 1. Main table update karo
+        const { error: updateErr } = await supabase
+            .from('menu_items')
+            .update({
+                item_name, category, description, is_veg, 
+                prep_time, image_url, base_price, has_variants
+            })
+            .eq('id', id);
+
+        if (updateErr) throw updateErr;
+
+        // 2. Purane variants/addons delete karo
+        await supabase.from('item_variants').delete().eq('item_id', id);
+        await supabase.from('item_addons').delete().eq('item_id', id);
+
+        // 3. Naye variants aur addons insert karo
+        if (has_variants && variants && variants.length > 0) {
+            const vData = variants.map(v => ({ item_id: id, variant_name: v.name || v.variant_name, price: v.price }));
+            await supabase.from('item_variants').insert(vData);
+        }
+        if (addons && addons.length > 0) {
+            const aData = addons.map(a => ({ item_id: id, addon_name: a.name || a.addon_name, price: a.price }));
+            await supabase.from('item_addons').insert(aData);
+        }
+
+        res.json({ status: 'success', message: 'Dish updated successfully!' });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
 
 // Server Start Karna
 const PORT = process.env.PORT || 5000;
