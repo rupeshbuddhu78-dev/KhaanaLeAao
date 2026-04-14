@@ -545,6 +545,77 @@ app.post('/partner/update-menu-item', async (req, res) => {
     }
 });
 
+// ==========================================
+// 🔥 CUSTOMER (USER) AUTHENTICATION ROUTES
+// ==========================================
+
+// 18. User Check API: Pata karne ke liye ki account pehle se hai ya nahi
+app.post('/user/check', async (req, res) => {
+    const { phone } = req.body;
+
+    if (!phone) {
+        return res.status(400).json({ status: 'error', message: 'Phone number zaroori hai!' });
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('users') // Jo nayi table tune banayi hai
+            .select('*')
+            .eq('phone', phone)
+            .maybeSingle();
+
+        if (error) throw error;
+
+        if (data) {
+            // Account pehle se hai (Seedha Login)
+            res.json({ status: 'exists', message: 'Welcome back!', user: data });
+        } else {
+            // Account nahi hai (Naya ban banana padega)
+            res.json({ status: 'new', message: 'Naya user hai, register karna padega.' });
+        }
+    } catch (error) {
+        console.error("Check User Error:", error.message);
+        res.status(500).json({ status: 'error', message: 'Database checking mein error aaya.' });
+    }
+});
+
+// 19. User Register API: Naya account database mein save karne ke liye
+app.post('/user/register', async (req, res) => {
+    const { phone, full_name, email } = req.body;
+
+    if (!phone || !full_name) {
+        return res.status(400).json({ status: 'error', message: 'Phone aur Name dono zaroori hain!' });
+    }
+
+    try {
+        // Supabase mein data insert karna
+        const { data, error } = await supabase
+            .from('users')
+            .insert([
+                { 
+                    phone: phone, 
+                    full_name: full_name, 
+                    email: email || null // Agar email nahi diya toh null save hoga
+                }
+            ])
+            .select()
+            .single();
+
+        if (error) {
+            // Agar kisi ne by-chance same number dubara dalne ki koshish ki
+            if (error.code === '23505') { // 23505 Unique Violation ka code hota hai
+                return res.status(400).json({ status: 'error', message: 'Ye number pehle se registered hai!' });
+            }
+            throw error;
+        }
+
+        res.json({ status: 'success', message: 'Account ban gaya!', user: data });
+    } catch (error) {
+        console.error("Register User Error:", error.message);
+        res.status(500).json({ status: 'error', message: 'Account banane mein server error aaya.' });
+    }
+});
+
 // Server Start Karna
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
