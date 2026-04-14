@@ -620,7 +620,8 @@ app.get('/customer/restaurants', async (req, res) => {
         // Hum sirf wahi restaurant dikhayenge jo admin ne approve kiye hain (status = active)
         const { data, error } = await supabase
             .from('restaurants')
-            .select('phone, restaurant_name, cuisine_type, logo_url, is_online')
+            // 🔥 YAHAN CHANGE KIYA HAI: 'name' column add kiya hai select query mein
+            .select('phone, name, restaurant_name, cuisine_type, logo_url, is_online')
             .eq('status', 'active'); // Tumhare admin panel ka format
 
         if (error) throw error;
