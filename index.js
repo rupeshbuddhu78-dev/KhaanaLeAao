@@ -325,6 +325,60 @@ app.get('/partner/menu/:phone', async (req, res) => {
     }
 });
 
+// ==========================================
+// API: ADD MENU ITEM TO DATABASE
+// ==========================================
+app.post('/add-menu-item', async (req, res) => {
+    try {
+        // 1. Android app se aane wala data receive karo
+        const { phone, itemName, category, description, foodType, prepTime, imageUrl, basePrice } = req.body;
+
+        console.log("Receiving new dish for phone:", phone);
+
+        // 2. Pehle Supabase se is phone number wale restaurant ki 'id' nikalenge
+        const { data: restaurant, error: restError } = await supabase
+            .from('restaurants')
+            .select('id')
+            .eq('phone', phone)
+            .single();
+
+        if (restError || !restaurant) {
+            console.error("Restaurant not found:", restError);
+            return res.status(404).json({ error: "Restaurant not found for this phone number." });
+        }
+
+        const restaurantId = restaurant.id;
+
+        // 3. Ab data ko 'menu_items' table mein insert karenge
+        const { data: menuItem, error: itemError } = await supabase
+            .from('menu_items')
+            .insert([
+                {
+                    restaurant_id: restaurantId,
+                    name: itemName,            // Tumhare table me column ka naam 'name' ya 'item_name' ho sakta hai
+                    category: category,
+                    description: description,
+                    food_type: foodType,
+                    prep_time: prepTime,       // Column ka naam check kar lena (prep_time ho sakta hai)
+                    image_url: imageUrl,
+                    price: basePrice || 0      // Agar variant wala case hoga to price yahan manage karenge
+                }
+            ]);
+
+        if (itemError) {
+            console.error("Error inserting menu item:", itemError);
+            return res.status(500).json({ error: "Failed to save item in database." });
+        }
+
+        // 4. Success message bhej do Android ko
+        res.status(200).json({ status: "success", message: "Dish saved successfully!" });
+
+    } catch (error) {
+        console.error("Server Crash Error:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
 // Server Start Karna
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
