@@ -425,19 +425,37 @@ app.post('/add-menu-item', async (req, res) => {
 });
 
 // ==========================================
-// 🔥 API 15: UPDATE ITEM AVAILABILITY (Toggle Switch Ke Liye)
+// 🔥 API 15: UPDATE ITEM AVAILABILITY (Toggle Switch Ke Liye Fix Ho Gaya)
 // ==========================================
 app.post('/partner/update-item-availability', async (req, res) => {
     const { id, is_available } = req.body;
+    
+    // Console log to check what is coming from Android
+    console.log(`🚀 [Switch Debug] ID: ${id} | Type: ${typeof id} | Status: ${is_available}`);
+
     try {
-        const { error } = await supabase
+        // Boolean conversion fix - strictly checking for true string or boolean
+        const booleanStatus = (is_available === true || is_available === 'true');
+
+        const { data, error } = await supabase
             .from('menu_items')
-            .update({ is_available })
-            .eq('id', id);
+            .update({ is_available: booleanStatus })
+            .eq('id', id)
+            .select(); // Fetch updated row
 
         if (error) throw error;
+
+        // Check if item was actually found and updated
+        if (!data || data.length === 0) {
+            console.log(`❌ [Switch Error] Database mein ID ${id} match nahi hui!`);
+            return res.status(404).json({ status: 'error', message: 'Item not found in DB' });
+        }
+
+        console.log(`✅ [Switch Success] ID ${id} ab ${booleanStatus} ho gaya hai!`);
         res.json({ status: 'success', message: 'Item availability updated!' });
+
     } catch (error) {
+        console.error("❌ [Switch API Crash]:", error.message);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
