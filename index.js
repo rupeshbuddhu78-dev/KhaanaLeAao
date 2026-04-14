@@ -380,28 +380,6 @@ app.post('/add-menu-item', async (req, res) => {
     }
 });
 
-// 14. Menu Item Delete karne ke liye
-app.delete('/partner/delete-item/:id', async (req, res) => {
-    try {
-        const { error } = await supabase.from('menu_items').delete().eq('id', req.params.id);
-        if (error) throw error;
-        res.json({ status: 'success', message: 'Item deleted successfully!' });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-// 15. Item ki availability (In Stock/Out of Stock) update karne ke liye
-app.post('/partner/update-item-availability', async (req, res) => {
-    const { id, is_available } = req.body;
-    try {
-        const { error } = await supabase.from('menu_items').update({ is_available }).eq('id', id);
-        if (error) throw error;
-        res.json({ status: 'success', message: 'Availability updated!' });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
 
 // Server Start Karna
 const PORT = process.env.PORT || 5000;
