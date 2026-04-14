@@ -16,7 +16,7 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-    console.error("ERROR: .env file mein Supabase URL ya Key missing hai!");
+    console.error("❌ ERROR: .env file mein Supabase URL ya Key missing hai!");
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -45,14 +45,14 @@ app.post('/send-otp', async (req, res) => {
     const response = await axios.get(url);
 
     if (response.data.Status === 'Success') {
-      console.log(`Success: OTP ${otp} sent to ${phone}`);
+      console.log(`✅ Success: OTP ${otp} sent to ${phone}`);
       return res.json({ status: 'success', message: 'OTP bhej diya gaya hai', otp: otp });
     } else {
-      console.error("2Factor Gateway Error:", response.data);
+      console.error("❌ 2Factor Gateway Error:", response.data);
       return res.status(500).json({ status: 'error', message: 'SMS Gateway issue' });
     }
   } catch (error) {
-    console.error("Server ka Error:", error.message);
+    console.error("❌ Server ka Error:", error.message);
     return res.status(500).json({ status: 'error', message: 'Backend crash ho gaya.' });
   }
 });
@@ -88,7 +88,7 @@ app.post('/complete-registration', async (req, res) => {
         if (insertError) throw insertError;
         res.json({ status: 'success', message: 'Basic Account Created!' });
     } catch (error) {
-        console.error("Supabase Error:", error.message);
+        console.error("❌ Supabase Error:", error.message);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
@@ -150,7 +150,7 @@ app.post('/register-restaurant-details', async (req, res) => {
         if (error) throw error;
         res.json({ status: 'success', message: 'Restaurant details submitted successfully!' });
     } catch (error) {
-        console.error("Route 4 Crash:", error.message);
+        console.error("❌ Route 4 Crash:", error.message);
         res.status(500).json({ status: 'error', message: error.message || "Unknown Database Error" });
     }
 });
@@ -349,7 +349,7 @@ app.get('/partner/menu/:phone', async (req, res) => {
         res.json({ status: 'success', data: completeMenu });
 
     } catch (error) {
-        console.error("Menu Fetch Crash Error:", error);
+        console.error("❌ Menu Fetch Crash Error:", error);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
@@ -413,74 +413,53 @@ app.post('/add-menu-item', async (req, res) => {
         res.status(200).json({ status: "success", message: "Dish saved successfully!" });
 
     } catch (error) {
-        console.error("API 14 Server Crash Error:", error);
+        console.error("❌ API 14 Server Crash Error:", error);
         res.status(500).json({ error: error.message || "Internal Server Error" });
     }
 });
 
 // ==========================================
-// 🔥 API 15A: UPDATE ITEM AVAILABILITY (Main Dish ke liye)
+// 🔥 API 15A: UPDATE ITEM AVAILABILITY
 // ==========================================
 app.post('/partner/update-item-availability', async (req, res) => {
     const { id, is_available } = req.body;
-    
-    console.log(`🚀 [Item Switch Debug] ID: ${id} | Type: ${typeof id} | Status: ${is_available}`);
-
     try {
         const numericId = parseInt(id, 10);
         const booleanStatus = (is_available === true || is_available === 'true');
 
         const { data, error } = await supabase
-            .from('menu_items')  // Yahan menu_items table update hoti hai
+            .from('menu_items') 
             .update({ is_available: booleanStatus })
             .eq('id', numericId)
             .select(); 
 
         if (error) throw error;
-
-        if (!data || data.length === 0) {
-            console.log(`❌ [Item Switch Error] Database mein ID ${numericId} match nahi hui!`);
-            return res.status(404).json({ status: 'error', message: 'Item not found in DB' });
-        }
-
-        console.log(`✅ [Item Switch Success] ID ${numericId} ab ${booleanStatus} ho gaya hai!`);
         res.json({ status: 'success', message: 'Item availability updated!' });
 
     } catch (error) {
-        console.error("❌ [Item Switch API Crash]:", error.message);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
 
 // ==========================================
-// 🔥 API 15B: UPDATE VARIANT AVAILABILITY (Naya Add Kiya)
-// Agar app se sirf "Half/Full" ko off karna ho toh isko use karna
+// 🔥 API 15B: UPDATE VARIANT AVAILABILITY 
 // ==========================================
 app.post('/partner/update-variant-availability', async (req, res) => {
     const { id, is_available } = req.body;
-    console.log(`🚀 [Variant Switch Debug] ID: ${id} | Status: ${is_available}`);
-
     try {
         const numericId = parseInt(id, 10);
         const booleanStatus = (is_available === true || is_available === 'true');
 
         const { data, error } = await supabase
-            .from('item_variants') // Yeh directly item_variants table ko update karega
+            .from('item_variants')
             .update({ is_available: booleanStatus })
             .eq('id', numericId)
             .select(); 
 
         if (error) throw error;
-
-        if (!data || data.length === 0) {
-            return res.status(404).json({ status: 'error', message: 'Variant not found in DB' });
-        }
-
-        console.log(`✅ [Variant Switch Success] ID ${numericId} ab ${booleanStatus} ho gaya hai!`);
         res.json({ status: 'success', message: 'Variant availability updated!' });
 
     } catch (error) {
-        console.error("❌ [Variant Switch API Crash]:", error.message);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
@@ -540,54 +519,63 @@ app.post('/partner/update-menu-item', async (req, res) => {
 
         res.json({ status: 'success', message: 'Dish updated successfully!' });
     } catch (error) {
-        console.error("Update Item Crash:", error);
+        console.error("❌ Update Item Crash:", error);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
 
 // ==========================================
-// 🔥 CUSTOMER (USER) AUTHENTICATION ROUTES
+// 🔥 CUSTOMER (USER) AUTHENTICATION ROUTES (YAHAN CHANGES KIYE HAIN)
 // ==========================================
 
 // 18. User Check API: Pata karne ke liye ki account pehle se hai ya nahi
 app.post('/user/check', async (req, res) => {
+    console.log("🚀 [USER CHECK API] Request Body:", req.body);
     const { phone } = req.body;
 
     if (!phone) {
+        console.log("❌ [USER CHECK ERROR] Phone number nahi mila!");
         return res.status(400).json({ status: 'error', message: 'Phone number zaroori hai!' });
     }
 
     try {
         const { data, error } = await supabase
-            .from('users') // Jo nayi table tune banayi hai
+            .from('users') 
             .select('*')
             .eq('phone', phone)
             .maybeSingle();
 
-        if (error) throw error;
+        if (error) {
+            console.error("❌ [SUPABASE ERROR - USER CHECK]:", error);
+            throw error;
+        }
 
         if (data) {
-            // Account pehle se hai (Seedha Login)
+            console.log("✅ [USER EXISTS] Data:", data);
             res.json({ status: 'exists', message: 'Welcome back!', user: data });
         } else {
-            // Account nahi hai (Naya ban banana padega)
+            console.log("⚠️ [NEW USER] Account nahi hai.");
             res.json({ status: 'new', message: 'Naya user hai, register karna padega.' });
         }
     } catch (error) {
-        console.error("Check User Error:", error.message);
-        res.status(500).json({ status: 'error', message: 'Database checking mein error aaya.' });
+        console.error("❌ [SERVER ERROR - USER CHECK]:", error.message);
+        res.status(500).json({ status: 'error', message: `DB Error: ${error.message}` });
     }
 });
 
 // 19. User Register API: Naya account database mein save karne ke liye
 app.post('/user/register', async (req, res) => {
+    console.log("🚀 [USER REGISTER API] Body received from App:", req.body);
     const { phone, full_name, email } = req.body;
 
     if (!phone || !full_name) {
+        console.log("❌ [USER REGISTER ERROR] Phone ya Full_name blank hai!");
         return res.status(400).json({ status: 'error', message: 'Phone aur Name dono zaroori hain!' });
     }
 
     try {
+        console.log(`⏳ Supabase me save ho raha hai -> Phone: ${phone}, Name: ${full_name}, Email: ${email}`);
+        
         // Supabase mein data insert karna
         const { data, error } = await supabase
             .from('users')
@@ -595,30 +583,35 @@ app.post('/user/register', async (req, res) => {
                 { 
                     phone: phone, 
                     full_name: full_name, 
-                    email: email || null // Agar email nahi diya toh null save hoga
+                    email: email || null 
                 }
             ])
             .select()
             .single();
 
         if (error) {
-            // Agar kisi ne by-chance same number dubara dalne ki koshish ki
-            if (error.code === '23505') { // 23505 Unique Violation ka code hota hai
+            console.error("❌ [SUPABASE INSERT ERROR]:", error); // Yahan sabse important detail milegi
+            
+            // Unique key violation (Number pehle se hai)
+            if (error.code === '23505') { 
                 return res.status(400).json({ status: 'error', message: 'Ye number pehle se registered hai!' });
             }
-            throw error;
+            
+            // Backend se ab direct DB ka error message app me bheja taaki debugging easy ho
+            return res.status(500).json({ status: 'error', message: `Supabase Error: ${error.message}` });
         }
 
+        console.log("✅ [USER REGISTER SUCCESS] User Database mein ban gaya:", data);
         res.json({ status: 'success', message: 'Account ban gaya!', user: data });
     } catch (error) {
-        console.error("Register User Error:", error.message);
-        res.status(500).json({ status: 'error', message: 'Account banane mein server error aaya.' });
+        console.error("❌ [SERVER CRASH - USER REGISTER]:", error);
+        res.status(500).json({ status: 'error', message: `Server Crash: ${error.message}` });
     }
 });
 
 // Server Start Karna
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server port ${PORT} par daud raha hai 🍲`);
-  console.log(`Supabase bhi connect ho chuka hai! ✅`);
+  console.log(`✅ Server port ${PORT} par daud raha hai 🍲`);
+  console.log(`✅ Supabase bhi connect ho chuka hai!`);
 });
