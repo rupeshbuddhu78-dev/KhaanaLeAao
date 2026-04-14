@@ -104,9 +104,7 @@ app.post('/login-partner', async (req, res) => {
             .eq('password', password)
             .maybeSingle();
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
         if (data) {
             res.json({ status: 'success', partner: data });
@@ -166,7 +164,6 @@ app.post('/check-status', async (req, res) => {
             .maybeSingle();
 
         if (error) throw error;
-
         if (data) {
             res.json({ status: 'success', dbStatus: data.status });
         } else {
@@ -252,10 +249,10 @@ app.post('/partner/update-status', async (req, res) => {
 });
 
 // ----------------------------------------------------
-// 🔥 MENU MANAGEMENT ROUTES (NAYE ROUTES)
+// 🔥 MENU MANAGEMENT ROUTES
 // ----------------------------------------------------
 
-// 10. Nayi Category Add karne ke liye (Jaise: Starters, Main Course)
+// 10. Nayi Category Add karne ke liye
 app.post('/partner/add-category', async (req, res) => {
     const { restaurant_phone, name, sort_order } = req.body;
     try {
@@ -271,14 +268,14 @@ app.post('/partner/add-category', async (req, res) => {
     }
 });
 
-// 11. Saari Categories Fetch karne ke liye (App mein dikhane ke liye)
+// 11. Saari Categories Fetch karne ke liye
 app.get('/partner/categories/:phone', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('menu_categories')
             .select('*')
             .eq('restaurant_phone', req.params.phone)
-            .order('sort_order', { ascending: true }); // Line se dikhane ke liye
+            .order('sort_order', { ascending: true });
             
         if (error) throw error;
         res.json({ status: 'success', data });
@@ -287,30 +284,7 @@ app.get('/partner/categories/:phone', async (req, res) => {
     }
 });
 
-// 12. Naya Menu Item (Dish) Add karne ke liye (prep_time ke sath)
-app.post('/partner/add-item', async (req, res) => {
-    const { 
-        restaurant_phone, category_id, item_name, description, 
-        is_veg, base_price, image_url, is_available, has_variants, prep_time 
-    } = req.body;
-    
-    try {
-        const { data, error } = await supabase
-            .from('menu_items')
-            .insert([{ 
-                restaurant_phone, category_id, item_name, description, 
-                is_veg, base_price, image_url, is_available, has_variants, prep_time 
-            }])
-            .select();
-            
-        if (error) throw error;
-        res.json({ status: 'success', message: 'Dish added successfully!', data });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-// 13. Pura Menu Fetch karne ke liye (Dishes dikhane ke liye)
+// 12. Pura Menu Fetch karne ke liye
 app.get('/partner/menu/:phone', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -326,11 +300,11 @@ app.get('/partner/menu/:phone', async (req, res) => {
 });
 
 // ==========================================
-// API: ADD MENU ITEM TO DATABASE (🔥 FIXED MATCHING APP & DB)
+// 🔥 API: ADD MENU ITEM (MODIFIED FOR VARIANTS & ADDONS)
 // ==========================================
 app.post('/add-menu-item', async (req, res) => {
     try {
-        // 1. Android app se jo keys aa rahi hain, EXACTLY wahi extract karo
+        // 1. Extract everything from Android request
         const { 
             restaurant_phone, 
             item_name, 
@@ -342,46 +316,66 @@ app.post('/add-menu-item', async (req, res) => {
             image_url, 
             has_variants,
             base_price,
-            price
+            price,
+            variants, // Naya: Array of variants from App
+            addons    // Naya: Array of addons from App
         } = req.body;
 
-        console.log("Receiving new dish for phone:", restaurant_phone);
-
-        // Agar phone number nahi aaya toh yahi se rok do
         if (!restaurant_phone) {
             return res.status(400).json({ error: "Restaurant phone is missing from app!" });
         }
 
-        // 2. Direct database mein insert karo (Kyunki table mein 'restaurant_phone' column hi use ho raha hai)
+        // STEP 1: Insert main item into 'menu_items' and get the new ID
         const { data: menuItem, error: itemError } = await supabase
             .from('menu_items')
             .insert([
                 {
-                    restaurant_phone: restaurant_phone,
-                    item_name: item_name,
-                    category: category,
-                    description: description,
-                    is_veg: is_veg,
-                    is_available: is_available,
-                    prep_time: prep_time,
-                    image_url: image_url,
-                    has_variants: has_variants,
-                    base_price: base_price || null,
-                    price: price || null
+                    restaurant_phone,
+                    item_name,
+                    category,
+                    description,
+                    is_veg,
+                    is_available,
+                    prep_time,
+                    image_url,
+                    has_variants,
+                    base_price: base_price || price || null
                 }
-            ]);
+            ])
+            .select()
+            .single();
 
-        if (itemError) {
-            console.error("Supabase Insert Error:", itemError);
-            return res.status(500).json({ error: "Database error: " + itemError.message });
+        if (itemError) throw itemError;
+
+        const newDishId = menuItem.id; // Nayi dish ki ID mil gayi
+
+        // STEP 2: Agar variants hain, unhe 'item_variants' table mein dalo
+        if (has_variants && variants && variants.length > 0) {
+            const variantsToInsert = variants.map(v => ({
+                item_id: newDishId,
+                variant_name: v.name || v.variant_name,
+                price: v.price
+            }));
+            const { error: variantErr } = await supabase.from('item_variants').insert(variantsToInsert);
+            if (variantErr) console.error("Variant Insert Error:", variantErr.message);
         }
 
-        // 3. Success message bhej do Android ko
-        res.status(200).json({ status: "success", message: "Dish saved successfully!" });
+        // STEP 3: Agar addons hain, unhe 'item_addons' table mein dalo
+        if (addons && addons.length > 0) {
+            const addonsToInsert = addons.map(a => ({
+                item_id: newDishId,
+                addon_name: a.name || a.addon_name,
+                price: a.price
+            }));
+            const { error: addonErr } = await supabase.from('item_addons').insert(addonsToInsert);
+            if (addonErr) console.error("Addon Insert Error:", addonErr.message);
+        }
+
+        res.status(200).json({ status: "success", message: "Dish with variants and addons saved!" });
 
     } catch (error) {
-        console.error("Server Crash Error:", error);
-        res.status(500).json({ error: "Internal Server Error" });
+        console.error("Server Crash Error:", error.message);
+        res.status(500).json({ error: error.message });
     }
 });
 
