@@ -155,7 +155,7 @@ app.post('/register-restaurant-details', async (req, res) => {
     }
 });
 
-// 5. NAYA ROUTE: App refresh button aur auto-status ke liye
+// 5. App refresh button aur auto-status ke liye
 app.post('/check-status', async (req, res) => {
     const { phone } = req.body;
     try {
@@ -255,7 +255,7 @@ app.post('/partner/update-status', async (req, res) => {
 // 🔥 MENU MANAGEMENT ROUTES
 // ----------------------------------------------------
 
-// 10. Nayi Category Add karne ke liye (Jaise: Starters, Main Course)
+// 10. Nayi Category Add karne ke liye
 app.post('/partner/add-category', async (req, res) => {
     const { restaurant_phone, name, sort_order } = req.body;
     try {
@@ -271,14 +271,14 @@ app.post('/partner/add-category', async (req, res) => {
     }
 });
 
-// 11. Saari Categories Fetch karne ke liye (App mein dikhane ke liye)
+// 11. Saari Categories Fetch karne ke liye
 app.get('/partner/categories/:phone', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('menu_categories')
             .select('*')
             .eq('restaurant_phone', req.params.phone)
-            .order('sort_order', { ascending: true }); // Line se dikhane ke liye
+            .order('sort_order', { ascending: true }); 
             
         if (error) throw error;
         res.json({ status: 'success', data });
@@ -310,104 +310,117 @@ app.post('/partner/add-item', async (req, res) => {
     }
 });
 
-// 13. Pura Menu Fetch karne ke liye (Dishes dikhane ke liye)
+// ==========================================
+// 🔥 API 13: Pura Menu Fetch karne ke liye (SAFE FIX FOR PRICES)
+// Server crash se bachane ke liye manual fetch lagaya hai.
+// ==========================================
 app.get('/partner/menu/:phone', async (req, res) => {
     try {
-        const { data, error } = await supabase
+        // Step 1: Pehle saare items fetch karo
+        const { data: menuItems, error: menuErr } = await supabase
             .from('menu_items')
             .select('*')
             .eq('restaurant_phone', req.params.phone);
             
-        if (error) throw error;
-        res.json({ status: 'success', data });
+        if (menuErr) throw menuErr;
+
+        if (!menuItems || menuItems.length === 0) {
+            return res.json({ status: 'success', data: [] });
+        }
+
+        // Step 2: Sab items ki IDs nikalo taaki unke prices fetch kar sakein
+        const itemIds = menuItems.map(item => item.id);
+
+        // Step 3: Variants aur Addons fetch karo
+        const { data: variants, error: varErr } = await supabase
+            .from('item_variants')
+            .select('*')
+            .in('item_id', itemIds);
+
+        const { data: addons, error: addErr } = await supabase
+            .from('item_addons')
+            .select('*')
+            .in('item_id', itemIds);
+
+        // Step 4: Items ke andar unke respective variants/addons attach kar do
+        const completeMenu = menuItems.map(item => {
+            return {
+                ...item,
+                variants: variants ? variants.filter(v => v.item_id === item.id) : [],
+                addons: addons ? addons.filter(a => a.item_id === item.id) : []
+            };
+        });
+
+        res.json({ status: 'success', data: completeMenu });
+
     } catch (error) {
+        console.error("Menu Fetch Crash Error:", error);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
 
 // ==========================================
-// 🔥 API 14: ADD MENU ITEM (UPDATED WITH VARIANTS & ADDONS)
+// 🔥 API 14: ADD MENU ITEM (UPDATED WITH VARIANTS)
 // ==========================================
 app.post('/add-menu-item', async (req, res) => {
     try {
-        // 1. Android app se jo keys aa rahi hain, usme variants aur addons bhi jode
         const { 
-            restaurant_phone, 
-            item_name, 
-            category, 
-            description, 
-            is_veg, 
-            is_available,
-            prep_time, 
-            image_url, 
-            has_variants,
-            base_price,
-            price,
-            variants, // Naya
-            addons    // Naya
+            restaurant_phone, item_name, category, description, is_veg, 
+            is_available, prep_time, image_url, has_variants, base_price, price, variants, addons 
         } = req.body;
-
-        console.log("Receiving new dish for phone:", restaurant_phone);
 
         if (!restaurant_phone) {
             return res.status(400).json({ error: "Restaurant phone is missing from app!" });
         }
 
-        // 2. Direct database mein insert karo (Aur id return lo .select().single() se)
+        // Available True rakhein by default
+        const safeIsAvailable = is_available !== undefined ? is_available : true;
+
         const { data: menuItem, error: itemError } = await supabase
             .from('menu_items')
-            .insert([
-                {
-                    restaurant_phone: restaurant_phone,
-                    item_name: item_name,
-                    category: category,
-                    description: description,
-                    is_veg: is_veg,
-                    is_available: is_available,
-                    prep_time: prep_time,
-                    image_url: image_url,
-                    has_variants: has_variants,
-                    base_price: base_price || null,
-                    price: price || null
-                }
-            ])
+            .insert([{
+                restaurant_phone: restaurant_phone,
+                item_name: item_name,
+                category: category,
+                description: description,
+                is_veg: is_veg,
+                is_available: safeIsAvailable,
+                prep_time: prep_time,
+                image_url: image_url,
+                has_variants: has_variants,
+                base_price: base_price || price || null,
+                price: price || null
+            }])
             .select()
             .single();
 
-        if (itemError) {
-            console.error("Supabase Insert Error:", itemError);
-            return res.status(500).json({ error: "Database error: " + itemError.message });
-        }
+        if (itemError) throw itemError;
 
         const newDishId = menuItem.id;
 
-        // 3. Agar variants hain, unhe 'item_variants' table mein dalo
         if (has_variants && variants && variants.length > 0) {
             const variantsToInsert = variants.map(v => ({
                 item_id: newDishId,
                 variant_name: v.name || v.variant_name,
                 price: v.price
             }));
-            const { error: variantErr } = await supabase.from('item_variants').insert(variantsToInsert);
-            if (variantErr) console.error("Variant Insert Error:", variantErr.message);
+            await supabase.from('item_variants').insert(variantsToInsert);
         }
         
-        // 4. Agar addons hain, unhe 'item_addons' table mein dalo
         if (addons && addons.length > 0) {
             const addonsToInsert = addons.map(a => ({
                 item_id: newDishId,
                 addon_name: a.name || a.addon_name,
                 price: a.price
             }));
-            const { error: addonErr } = await supabase.from('item_addons').insert(addonsToInsert);
-            if (addonErr) console.error("Addon Insert Error:", addonErr.message);
+            await supabase.from('item_addons').insert(addonsToInsert);
         }
 
-        res.status(200).json({ status: "success", message: "Dish saved with variants and addons successfully!" });
+        res.status(200).json({ status: "success", message: "Dish saved successfully!" });
 
     } catch (error) {
-        console.error("Server Crash Error:", error);
-        res.status(500).json({ error: "Internal Server Error" });
+        console.error("API 14 Server Crash Error:", error);
+        res.status(500).json({ error: error.message || "Internal Server Error" });
     }
 });
 
@@ -430,17 +443,15 @@ app.post('/partner/update-item-availability', async (req, res) => {
 });
 
 // ==========================================
-// 🔥 API 16: DELETE MENU ITEM (Variants ke saath delete karne ke liye)
+// 🔥 API 16: DELETE MENU ITEM
 // ==========================================
 app.delete('/partner/delete-item/:id', async (req, res) => {
     try {
         const itemId = req.params.id;
 
-        // Pehle child tables (variants/addons) ko saaf karo
         await supabase.from('item_variants').delete().eq('item_id', itemId);
         await supabase.from('item_addons').delete().eq('item_id', itemId);
         
-        // Fir main item ko delete karo
         const { error } = await supabase.from('menu_items').delete().eq('id', itemId);
         if (error) throw error;
 
@@ -460,7 +471,6 @@ app.post('/partner/update-menu-item', async (req, res) => {
             prep_time, image_url, base_price, has_variants, variants, addons 
         } = req.body;
 
-        // 1. Main table update karo
         const { error: updateErr } = await supabase
             .from('menu_items')
             .update({
@@ -471,11 +481,9 @@ app.post('/partner/update-menu-item', async (req, res) => {
 
         if (updateErr) throw updateErr;
 
-        // 2. Purane variants/addons delete karo
         await supabase.from('item_variants').delete().eq('item_id', id);
         await supabase.from('item_addons').delete().eq('item_id', id);
 
-        // 3. Naye variants aur addons insert karo
         if (has_variants && variants && variants.length > 0) {
             const vData = variants.map(v => ({ item_id: id, variant_name: v.name || v.variant_name, price: v.price }));
             await supabase.from('item_variants').insert(vData);
@@ -487,6 +495,7 @@ app.post('/partner/update-menu-item', async (req, res) => {
 
         res.json({ status: 'success', message: 'Dish updated successfully!' });
     } catch (error) {
+        console.error("Update Item Crash:", error);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
