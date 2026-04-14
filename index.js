@@ -610,6 +610,50 @@ app.post('/user/register', async (req, res) => {
     }
 });
 
+// ==========================================
+// 🔥 CUSTOMER APP HOME SCREEN ROUTES (NEW)
+// ==========================================
+
+// 1. Saare active restaurants fetch karna Customer ke liye
+app.get('/customer/restaurants', async (req, res) => {
+    try {
+        // Hum sirf wahi restaurant dikhayenge jo admin ne approve kiye hain (status = active)
+        const { data, error } = await supabase
+            .from('restaurants')
+            .select('phone, restaurant_name, cuisine_type, logo_url, is_online')
+            .eq('status', 'active'); // Tumhare admin panel ka format
+
+        if (error) throw error;
+        res.json({ status: 'success', data: data });
+    } catch (error) {
+        console.error("❌ Customer Restaurants Error:", error);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// 2. Categories Fetch karna (Logo URL ke sath)
+app.get('/customer/categories', async (req, res) => {
+    try {
+        // Agar tumne Supabase me 'app_categories' naam ki table banayi hai toh data wahan se aayega
+        const { data, error } = await supabase.from('app_categories').select('*');
+        
+        // Agar table nahi mili ya khaali hai, toh fallback (taaki app crash na ho)
+        if (error || !data || data.length === 0) {
+            const defaultCategories = [
+                { id: "1", name: "Offers", logo_url: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&q=80" },
+                { id: "2", name: "Pizza", logo_url: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500&q=80" },
+                { id: "3", name: "Burger", logo_url: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&q=80" },
+                { id: "4", name: "Healthy", logo_url: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=500&q=80" },
+                { id: "5", name: "Biryani", logo_url: "https://images.unsplash.com/photo-1631515243349-e0cb75fb8d3a?w=500&q=80" }
+            ];
+            return res.json({ status: 'success', data: defaultCategories });
+        }
+        res.json({ status: 'success', data: data });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
 // Server Start Karna
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
