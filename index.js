@@ -57,7 +57,7 @@ app.post('/send-otp', async (req, res) => {
   }
 });
 
-// 2. 🔥 FIX KIYA GAYA ROUTE: Duplicate Phone Number Checking ke sath
+// 2. Duplicate Phone Number Checking ke sath
 app.post('/complete-registration', async (req, res) => {
     const { name, phone, password } = req.body;
     try {
@@ -326,51 +326,57 @@ app.get('/partner/menu/:phone', async (req, res) => {
 });
 
 // ==========================================
-// API: ADD MENU ITEM TO DATABASE
+// API: ADD MENU ITEM TO DATABASE (🔥 FIXED MATCHING APP & DB)
 // ==========================================
 app.post('/add-menu-item', async (req, res) => {
     try {
-        // 1. Android app se aane wala data receive karo
-        const { phone, itemName, category, description, foodType, prepTime, imageUrl, basePrice } = req.body;
+        // 1. Android app se jo keys aa rahi hain, EXACTLY wahi extract karo
+        const { 
+            restaurant_phone, 
+            item_name, 
+            category, 
+            description, 
+            is_veg, 
+            is_available,
+            prep_time, 
+            image_url, 
+            has_variants,
+            base_price,
+            price
+        } = req.body;
 
-        console.log("Receiving new dish for phone:", phone);
+        console.log("Receiving new dish for phone:", restaurant_phone);
 
-        // 2. Pehle Supabase se is phone number wale restaurant ki 'id' nikalenge
-        const { data: restaurant, error: restError } = await supabase
-            .from('restaurants')
-            .select('id')
-            .eq('phone', phone)
-            .single();
-
-        if (restError || !restaurant) {
-            console.error("Restaurant not found:", restError);
-            return res.status(404).json({ error: "Restaurant not found for this phone number." });
+        // Agar phone number nahi aaya toh yahi se rok do
+        if (!restaurant_phone) {
+            return res.status(400).json({ error: "Restaurant phone is missing from app!" });
         }
 
-        const restaurantId = restaurant.id;
-
-        // 3. Ab data ko 'menu_items' table mein insert karenge
+        // 2. Direct database mein insert karo (Kyunki table mein 'restaurant_phone' column hi use ho raha hai)
         const { data: menuItem, error: itemError } = await supabase
             .from('menu_items')
             .insert([
                 {
-                    restaurant_id: restaurantId,
-                    name: itemName,            // Tumhare table me column ka naam 'name' ya 'item_name' ho sakta hai
+                    restaurant_phone: restaurant_phone,
+                    item_name: item_name,
                     category: category,
                     description: description,
-                    food_type: foodType,
-                    prep_time: prepTime,       // Column ka naam check kar lena (prep_time ho sakta hai)
-                    image_url: imageUrl,
-                    price: basePrice || 0      // Agar variant wala case hoga to price yahan manage karenge
+                    is_veg: is_veg,
+                    is_available: is_available,
+                    prep_time: prep_time,
+                    image_url: image_url,
+                    has_variants: has_variants,
+                    base_price: base_price || null,
+                    price: price || null
                 }
             ]);
 
         if (itemError) {
-            console.error("Error inserting menu item:", itemError);
-            return res.status(500).json({ error: "Failed to save item in database." });
+            console.error("Supabase Insert Error:", itemError);
+            return res.status(500).json({ error: "Database error: " + itemError.message });
         }
 
-        // 4. Success message bhej do Android ko
+        // 3. Success message bhej do Android ko
         res.status(200).json({ status: "success", message: "Dish saved successfully!" });
 
     } catch (error) {
