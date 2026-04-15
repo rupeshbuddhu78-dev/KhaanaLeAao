@@ -215,13 +215,14 @@ app.post('/admin/approve-restaurant', async (req, res) => {
 // 🔥 MAIN DASHBOARD ROUTES
 // ----------------------------------------------------
 
-// 8. Dashboard pe Restaurant ka naam aur status fetch karne ke liye
+// 8. Dashboard pe Restaurant ka naam aur status fetch karne ke liye (UPDATED)
 app.get('/partner/dashboard/:phone', async (req, res) => {
     const { phone } = req.params;
     try {
         const { data, error } = await supabase
             .from('restaurants')
-            .select('restaurant_name, is_online') 
+            // 🔥 YAHAN FIX KIYA HAI: '*' lagaya hai taaki saari fields app me ja sakein
+            .select('*') 
             .eq('phone', phone)
             .maybeSingle();
 
