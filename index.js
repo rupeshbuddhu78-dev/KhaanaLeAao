@@ -656,6 +656,33 @@ app.get('/customer/categories', async (req, res) => {
     }
 });
 
+// ==========================================
+// 🔥 NEW API: Android App se Profile Edit/Update karne ke liye
+// ==========================================
+app.post('/partner/updateProfile', async (req, res) => {
+    const { phone, field, value } = req.body;
+
+    if (!phone || !field) {
+        return res.status(400).json({ status: 'error', message: 'Phone aur field name zaroori hai!' });
+    }
+
+    try {
+        // Dynamic field update in Supabase
+        const { data, error } = await supabase
+            .from('restaurants')
+            .update({ [field]: value }) // Jo field app se aayegi wahi update hogi
+            .eq('phone', phone)
+            .select();
+
+        if (error) throw error;
+        
+        res.json({ status: 'success', message: `${field} updated successfully!`, data: data });
+    } catch (error) {
+        console.error("❌ Update Profile Error:", error);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
 // Server Start Karna
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
