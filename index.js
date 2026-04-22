@@ -658,10 +658,18 @@ app.delete('/user/address/delete/:id', async (req, res) => {
 // 1. PLACE ORDER (Customer App se Order place karne par)
 app.post('/order/place', async (req, res) => {
     const { 
-        user_id, restaurant_id, order_items, delivery_address, 
-        item_total, delivery_charge, grand_total, payment_mode 
+        user_id, 
+        restaurant_id, 
+        restaurant_name, // 🔥 NAYA: Android se ab ye bhi aayega
+        order_items, 
+        delivery_address, 
+        item_total, 
+        delivery_charge, 
+        grand_total, 
+        payment_mode 
     } = req.body;
 
+    // Check karo ki zaroori cheezein mil rahi hain ya nahi
     if (!user_id || !restaurant_id || !order_items || !grand_total) {
         return res.status(400).json({ status: 'error', message: 'Order details missing hain!' });
     }
@@ -672,20 +680,21 @@ app.post('/order/place', async (req, res) => {
             .insert([{
                 user_id,
                 restaurant_id,
+                restaurant_name, // 🔥 NAYA: Database mein save kar rahe hain
                 order_items, 
                 delivery_address,
                 item_total,
                 delivery_charge,
                 grand_total,
                 payment_mode: payment_mode || 'COD',
-                order_status: 'Pending' // Shuru me Pending rahega
+                order_status: 'Pending' 
             }])
             .select()
             .single();
 
         if (error) throw error;
         
-        console.log("✅ New Order Placed:", data.id);
+        console.log("✅ New Order Placed with Name:", restaurant_name);
         res.json({ status: 'success', message: 'Order Confirmed!', order: data });
 
     } catch (error) {
@@ -694,12 +703,12 @@ app.post('/order/place', async (req, res) => {
     }
 });
 
-// 2. GET CUSTOMER ORDERS (Customer ko uske purane orders dikhane ke liye)
+// 2. GET CUSTOMER ORDERS (Isme kuch change nahi karna, select '*' sab le aayega)
 app.get('/order/customer/:userId', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('orders')
-            .select('*')
+            .select('*') // '*' matlab saare columns, restaurant_name apne aap aa jayega
             .eq('user_id', req.params.userId)
             .order('created_at', { ascending: false });
 
