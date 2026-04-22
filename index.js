@@ -311,9 +311,7 @@ app.post('/partner/add-item', async (req, res) => {
     }
 });
 
-// ==========================================
-// 🔥 API 13: Pura Menu Fetch karne ke liye
-// ==========================================
+// 13. Pura Menu Fetch karne ke liye
 app.get('/partner/menu/:phone', async (req, res) => {
     try {
         const { data: menuItems, error: menuErr } = await supabase
@@ -355,9 +353,7 @@ app.get('/partner/menu/:phone', async (req, res) => {
     }
 });
 
-// ==========================================
-// 🔥 API 14: ADD MENU ITEM (UPDATED WITH VARIANTS)
-// ==========================================
+// 14. ADD MENU ITEM (UPDATED WITH VARIANTS)
 app.post('/add-menu-item', async (req, res) => {
     try {
         const { 
@@ -419,9 +415,7 @@ app.post('/add-menu-item', async (req, res) => {
     }
 });
 
-// ==========================================
-// 🔥 API 15A: UPDATE ITEM AVAILABILITY
-// ==========================================
+// 15A. UPDATE ITEM AVAILABILITY
 app.post('/partner/update-item-availability', async (req, res) => {
     const { id, is_available } = req.body;
     try {
@@ -442,9 +436,7 @@ app.post('/partner/update-item-availability', async (req, res) => {
     }
 });
 
-// ==========================================
-// 🔥 API 15B: UPDATE VARIANT AVAILABILITY 
-// ==========================================
+// 15B. UPDATE VARIANT AVAILABILITY 
 app.post('/partner/update-variant-availability', async (req, res) => {
     const { id, is_available } = req.body;
     try {
@@ -465,9 +457,7 @@ app.post('/partner/update-variant-availability', async (req, res) => {
     }
 });
 
-// ==========================================
-// 🔥 API 16: DELETE MENU ITEM 
-// ==========================================
+// 16. DELETE MENU ITEM 
 app.delete('/partner/delete-item/:id', async (req, res) => {
     try {
         const itemId = parseInt(req.params.id, 10);
@@ -484,9 +474,7 @@ app.delete('/partner/delete-item/:id', async (req, res) => {
     }
 });
 
-// ==========================================
-// 🔥 API 17: UPDATE FULL MENU ITEM 
-// ==========================================
+// 17. UPDATE FULL MENU ITEM 
 app.post('/partner/update-menu-item', async (req, res) => {
     try {
         const { 
@@ -529,79 +517,37 @@ app.post('/partner/update-menu-item', async (req, res) => {
 // 🔥 CUSTOMER (USER) AUTHENTICATION ROUTES
 // ==========================================
 
-// 18. User Check API: Pata karne ke liye ki account pehle se hai ya nahi
+// 18. User Check API
 app.post('/user/check', async (req, res) => {
-    console.log("🚀 [USER CHECK API] Request Body:", req.body);
     const { phone } = req.body;
-
-    if (!phone) {
-        console.log("❌ [USER CHECK ERROR] Phone number nahi mila!");
-        return res.status(400).json({ status: 'error', message: 'Phone number zaroori hai!' });
-    }
+    if (!phone) return res.status(400).json({ status: 'error', message: 'Phone number zaroori hai!' });
 
     try {
-        const { data, error } = await supabase
-            .from('users') 
-            .select('*')
-            .eq('phone', phone)
-            .maybeSingle();
-
-        if (error) {
-            console.error("❌ [SUPABASE ERROR - USER CHECK]:", error);
-            throw error;
-        }
-
+        const { data, error } = await supabase.from('users').select('*').eq('phone', phone).maybeSingle();
+        if (error) throw error;
         if (data) {
-            console.log("✅ [USER EXISTS] Data:", data);
             res.json({ status: 'exists', message: 'Welcome back!', user: data });
         } else {
-            console.log("⚠️ [NEW USER] Account nahi hai.");
             res.json({ status: 'new', message: 'Naya user hai, register karna padega.' });
         }
     } catch (error) {
-        console.error("❌ [SERVER ERROR - USER CHECK]:", error.message);
         res.status(500).json({ status: 'error', message: `DB Error: ${error.message}` });
     }
 });
 
-// 19. User Register API: Naya account database mein save karne ke liye
+// 19. User Register API
 app.post('/user/register', async (req, res) => {
-    console.log("🚀 [USER REGISTER API] Body received from App:", req.body);
     const { phone, full_name, email } = req.body;
-
-    if (!phone || !full_name) {
-        console.log("❌ [USER REGISTER ERROR] Phone ya Full_name blank hai!");
-        return res.status(400).json({ status: 'error', message: 'Phone aur Name dono zaroori hain!' });
-    }
+    if (!phone || !full_name) return res.status(400).json({ status: 'error', message: 'Phone aur Name dono zaroori hain!' });
 
     try {
-        console.log(`⏳ Supabase me save ho raha hai -> Phone: ${phone}, Name: ${full_name}, Email: ${email}`);
-        
-        // Supabase mein data insert karna
-        const { data, error } = await supabase
-            .from('users')
-            .insert([
-                { 
-                    phone: phone, 
-                    full_name: full_name, 
-                    email: email || null 
-                }
-            ])
-            .select()
-            .single();
-
+        const { data, error } = await supabase.from('users').insert([{ phone, full_name, email: email || null }]).select().single();
         if (error) {
-            console.error("❌ [SUPABASE INSERT ERROR]:", error); 
-            if (error.code === '23505') { 
-                return res.status(400).json({ status: 'error', message: 'Ye number pehle se registered hai!' });
-            }
+            if (error.code === '23505') return res.status(400).json({ status: 'error', message: 'Ye number pehle se registered hai!' });
             return res.status(500).json({ status: 'error', message: `Supabase Error: ${error.message}` });
         }
-
-        console.log("✅ [USER REGISTER SUCCESS] User Database mein ban gaya:", data);
         res.json({ status: 'success', message: 'Account ban gaya!', user: data });
     } catch (error) {
-        console.error("❌ [SERVER CRASH - USER REGISTER]:", error);
         res.status(500).json({ status: 'error', message: `Server Crash: ${error.message}` });
     }
 });
@@ -610,27 +556,21 @@ app.post('/user/register', async (req, res) => {
 // 🔥 CUSTOMER APP HOME SCREEN ROUTES
 // ==========================================
 
-// 1. Saare active restaurants fetch karna Customer ke liye
+// 1. Saare active restaurants fetch karna
 app.get('/customer/restaurants', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('restaurants')
-            .select('phone, name, restaurant_name, cuisine_type, logo_url, is_online')
-            .eq('status', 'active');
-
+        const { data, error } = await supabase.from('restaurants').select('phone, name, restaurant_name, cuisine_type, logo_url, is_online').eq('status', 'active');
         if (error) throw error;
         res.json({ status: 'success', data: data });
     } catch (error) {
-        console.error("❌ Customer Restaurants Error:", error);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
 
-// 2. Categories Fetch karna (Logo URL ke sath)
+// 2. Categories Fetch karna
 app.get('/customer/categories', async (req, res) => {
     try {
         const { data, error } = await supabase.from('app_categories').select('*');
-        
         if (error || !data || data.length === 0) {
             const defaultCategories = [
                 { id: "1", name: "Offers", logo_url: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&q=80" },
@@ -650,119 +590,216 @@ app.get('/customer/categories', async (req, res) => {
 // 3. Android App se Profile Edit/Update karne ke liye
 app.post('/partner/updateProfile', async (req, res) => {
     const { phone, field, value } = req.body;
-
-    if (!phone || !field) {
-        return res.status(400).json({ status: 'error', message: 'Phone aur field name zaroori hai!' });
-    }
+    if (!phone || !field) return res.status(400).json({ status: 'error', message: 'Phone aur field name zaroori hai!' });
 
     try {
-        const { data, error } = await supabase
-            .from('restaurants')
-            .update({ [field]: value })
-            .eq('phone', phone)
-            .select();
-
+        const { data, error } = await supabase.from('restaurants').update({ [field]: value }).eq('phone', phone).select();
         if (error) throw error;
         res.json({ status: 'success', message: `${field} updated successfully!`, data: data });
     } catch (error) {
-        console.error("❌ Update Profile Error:", error);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
 
 // ==========================================
-// 🔥 USER ADDRESS MANAGEMENT ROUTES (NEW HAIN YE!)
+// 🔥 USER ADDRESS MANAGEMENT ROUTES
 // ==========================================
 
-// 1. Add New Address (Address Add Karne Ke Liye)
 app.post('/user/address/add', async (req, res) => {
     const { user_id, address_type, receiver_name, full_address, receiver_phone } = req.body;
-
-    if (!user_id || !full_address || !receiver_phone) {
-        return res.status(400).json({ status: 'error', message: 'Zaroori details missing hain!' });
-    }
+    if (!user_id || !full_address || !receiver_phone) return res.status(400).json({ status: 'error', message: 'Zaroori details missing hain!' });
 
     try {
-        const { data, error } = await supabase
-            .from('user_addresses') // Supabase me ye table banani hogi
-            .insert([{ 
-                user_id, 
-                address_type: address_type || 'Home', 
-                receiver_name, 
-                full_address, 
-                receiver_phone 
-            }])
-            .select();
-
+        const { data, error } = await supabase.from('user_addresses').insert([{ user_id, address_type: address_type || 'Home', receiver_name, full_address, receiver_phone }]).select();
         if (error) throw error;
         res.json({ status: 'success', message: 'Address successfully save ho gaya!', data });
     } catch (error) {
-        console.error("❌ Add Address Error:", error);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
 
-// 2. Get All Addresses (Kise user ke saare addresses fetch karne ke liye)
 app.get('/user/addresses/:userId', async (req, res) => {
-    const { userId } = req.params;
+    try {
+        const { data, error } = await supabase.from('user_addresses').select('*').eq('user_id', req.params.userId).order('created_at', { ascending: false });
+        if (error) throw error;
+        res.json({ status: 'success', data });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+app.post('/user/address/update', async (req, res) => {
+    const { id, address_type, receiver_name, full_address, receiver_phone } = req.body;
+    if (!id) return res.status(400).json({ status: 'error', message: 'Address ID zaroori hai!' });
+
+    try {
+        const { data, error } = await supabase.from('user_addresses').update({ address_type, receiver_name, full_address, receiver_phone }).eq('id', id).select();
+        if (error) throw error;
+        res.json({ status: 'success', message: 'Address update ho gaya!', data });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+app.delete('/user/address/delete/:id', async (req, res) => {
+    try {
+        const { error } = await supabase.from('user_addresses').delete().eq('id', req.params.id);
+        if (error) throw error;
+        res.json({ status: 'success', message: 'Address delete kar diya gaya hai!' });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// ==========================================
+// 🚀 🔥 NAYA: ORDER MANAGEMENT & ADMIN POWERS 🔥 🚀
+// ==========================================
+
+// 1. PLACE ORDER (Customer App se Order place karne par)
+app.post('/order/place', async (req, res) => {
+    const { 
+        user_id, restaurant_id, order_items, delivery_address, 
+        item_total, delivery_charge, grand_total, payment_mode 
+    } = req.body;
+
+    if (!user_id || !restaurant_id || !order_items || !grand_total) {
+        return res.status(400).json({ status: 'error', message: 'Order details missing hain!' });
+    }
 
     try {
         const { data, error } = await supabase
-            .from('user_addresses')
+            .from('orders')
+            .insert([{
+                user_id,
+                restaurant_id,
+                order_items, 
+                delivery_address,
+                item_total,
+                delivery_charge,
+                grand_total,
+                payment_mode: payment_mode || 'COD',
+                order_status: 'Pending' // Shuru me Pending rahega
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        
+        console.log("✅ New Order Placed:", data.id);
+        res.json({ status: 'success', message: 'Order Confirmed!', order: data });
+
+    } catch (error) {
+        console.error("❌ Place Order Error:", error);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// 2. GET CUSTOMER ORDERS (Customer ko uske purane orders dikhane ke liye)
+app.get('/order/customer/:userId', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('orders')
             .select('*')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false }); // Sabse naya address upar dikhega
+            .eq('user_id', req.params.userId)
+            .order('created_at', { ascending: false });
 
         if (error) throw error;
         res.json({ status: 'success', data });
     } catch (error) {
-        console.error("❌ Fetch Address Error:", error);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
 
-// 3. Edit/Update Address (Save kiye hue address ko edit karne ke liye)
-app.post('/user/address/update', async (req, res) => {
-    const { id, address_type, receiver_name, full_address, receiver_phone } = req.body;
+// 3. GET PARTNER ORDERS (Restaurant wale ko orders dikhane ke liye)
+app.get('/order/partner/:restaurantId', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('restaurant_id', req.params.restaurantId)
+            .order('created_at', { ascending: false });
 
-    if (!id) {
-        return res.status(400).json({ status: 'error', message: 'Address ID zaroori hai update karne ke liye!' });
+        if (error) throw error;
+        res.json({ status: 'success', data });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// 4. UPDATE ORDER STATUS (Partner app se Accept/Reject/Deliver karne ke liye)
+app.post('/order/update-status', async (req, res) => {
+    const { order_id, status } = req.body;
+    // Status can be: 'Accepted', 'Preparing', 'Out for Delivery', 'Delivered', 'Cancelled'
+
+    if (!order_id || !status) {
+        return res.status(400).json({ status: 'error', message: 'Order ID aur Naya Status zaroori hai!' });
     }
 
     try {
         const { data, error } = await supabase
-            .from('user_addresses')
-            .update({ 
-                address_type, 
-                receiver_name, 
-                full_address, 
-                receiver_phone 
-            })
-            .eq('id', id)
+            .from('orders')
+            .update({ order_status: status })
+            .eq('id', order_id)
             .select();
 
         if (error) throw error;
-        res.json({ status: 'success', message: 'Address update ho gaya!', data });
+        res.json({ status: 'success', message: `Order status changed to ${status}!`, data });
     } catch (error) {
-        console.error("❌ Update Address Error:", error);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
 
-// 4. Delete Address (Address delete karne ke liye)
-app.delete('/user/address/delete/:id', async (req, res) => {
-    const addressId = req.params.id;
+// ==========================================
+// 🛡️ ADMIN POWERS (Super Admin routes)
+// ==========================================
 
+// A. ADMIN: View All Orders
+app.get('/admin/all-orders', async (req, res) => {
     try {
-        const { error } = await supabase
-            .from('user_addresses')
-            .delete()
-            .eq('id', addressId);
+        const { data, error } = await supabase
+            .from('orders')
+            .select('*')
+            .order('created_at', { ascending: false });
 
         if (error) throw error;
-        res.json({ status: 'success', message: 'Address delete kar diya gaya hai!' });
+        res.json({ status: 'success', data });
     } catch (error) {
-        console.error("❌ Delete Address Error:", error);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// B. ADMIN: Delete/Remove Spam Order
+app.delete('/admin/delete-order/:id', async (req, res) => {
+    try {
+        const { error } = await supabase
+            .from('orders')
+            .delete()
+            .eq('id', req.params.id);
+
+        if (error) throw error;
+        res.json({ status: 'success', message: 'Order successfully deleted!' });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// C. ADMIN: Edit Order (Force change status, refund, etc)
+app.post('/admin/edit-order', async (req, res) => {
+    const { order_id, new_status, new_total } = req.body;
+    try {
+        const updates = {};
+        if (new_status) updates.order_status = new_status;
+        if (new_total) updates.grand_total = new_total;
+
+        const { data, error } = await supabase
+            .from('orders')
+            .update(updates)
+            .eq('id', order_id)
+            .select();
+
+        if (error) throw error;
+        res.json({ status: 'success', message: 'Admin forcefully updated the order.', data });
+    } catch (error) {
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
