@@ -221,7 +221,6 @@ app.get('/partner/dashboard/:phone', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('restaurants')
-            // 🔥 YAHAN FIX KIYA HAI: '*' lagaya hai taaki saari fields app me ja sakein
             .select('*') 
             .eq('phone', phone)
             .maybeSingle();
@@ -527,7 +526,7 @@ app.post('/partner/update-menu-item', async (req, res) => {
 });
 
 // ==========================================
-// 🔥 CUSTOMER (USER) AUTHENTICATION ROUTES (YAHAN CHANGES KIYE HAIN)
+// 🔥 CUSTOMER (USER) AUTHENTICATION ROUTES
 // ==========================================
 
 // 18. User Check API: Pata karne ke liye ki account pehle se hai ya nahi
@@ -592,14 +591,10 @@ app.post('/user/register', async (req, res) => {
             .single();
 
         if (error) {
-            console.error("❌ [SUPABASE INSERT ERROR]:", error); // Yahan sabse important detail milegi
-            
-            // Unique key violation (Number pehle se hai)
+            console.error("❌ [SUPABASE INSERT ERROR]:", error); 
             if (error.code === '23505') { 
                 return res.status(400).json({ status: 'error', message: 'Ye number pehle se registered hai!' });
             }
-            
-            // Backend se ab direct DB ka error message app me bheja taaki debugging easy ho
             return res.status(500).json({ status: 'error', message: `Supabase Error: ${error.message}` });
         }
 
@@ -612,18 +607,16 @@ app.post('/user/register', async (req, res) => {
 });
 
 // ==========================================
-// 🔥 CUSTOMER APP HOME SCREEN ROUTES (NEW)
+// 🔥 CUSTOMER APP HOME SCREEN ROUTES
 // ==========================================
 
 // 1. Saare active restaurants fetch karna Customer ke liye
 app.get('/customer/restaurants', async (req, res) => {
     try {
-        // Hum sirf wahi restaurant dikhayenge jo admin ne approve kiye hain (status = active)
         const { data, error } = await supabase
             .from('restaurants')
-            // 🔥 YAHAN CHANGE KIYA HAI: 'name' column add kiya hai select query mein
             .select('phone, name, restaurant_name, cuisine_type, logo_url, is_online')
-            .eq('status', 'active'); // Tumhare admin panel ka format
+            .eq('status', 'active');
 
         if (error) throw error;
         res.json({ status: 'success', data: data });
@@ -636,10 +629,8 @@ app.get('/customer/restaurants', async (req, res) => {
 // 2. Categories Fetch karna (Logo URL ke sath)
 app.get('/customer/categories', async (req, res) => {
     try {
-        // Agar tumne Supabase me 'app_categories' naam ki table banayi hai toh data wahan se aayega
         const { data, error } = await supabase.from('app_categories').select('*');
         
-        // Agar table nahi mili ya khaali hai, toh fallback (taaki app crash na ho)
         if (error || !data || data.length === 0) {
             const defaultCategories = [
                 { id: "1", name: "Offers", logo_url: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&q=80" },
@@ -656,9 +647,7 @@ app.get('/customer/categories', async (req, res) => {
     }
 });
 
-// ==========================================
-// 🔥 NEW API: Android App se Profile Edit/Update karne ke liye
-// ==========================================
+// 3. Android App se Profile Edit/Update karne ke liye
 app.post('/partner/updateProfile', async (req, res) => {
     const { phone, field, value } = req.body;
 
@@ -667,18 +656,113 @@ app.post('/partner/updateProfile', async (req, res) => {
     }
 
     try {
-        // Dynamic field update in Supabase
         const { data, error } = await supabase
             .from('restaurants')
-            .update({ [field]: value }) // Jo field app se aayegi wahi update hogi
+            .update({ [field]: value })
             .eq('phone', phone)
             .select();
 
         if (error) throw error;
-        
         res.json({ status: 'success', message: `${field} updated successfully!`, data: data });
     } catch (error) {
         console.error("❌ Update Profile Error:", error);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// ==========================================
+// 🔥 USER ADDRESS MANAGEMENT ROUTES (NEW HAIN YE!)
+// ==========================================
+
+// 1. Add New Address (Address Add Karne Ke Liye)
+app.post('/user/address/add', async (req, res) => {
+    const { user_id, address_type, receiver_name, full_address, receiver_phone } = req.body;
+
+    if (!user_id || !full_address || !receiver_phone) {
+        return res.status(400).json({ status: 'error', message: 'Zaroori details missing hain!' });
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('user_addresses') // Supabase me ye table banani hogi
+            .insert([{ 
+                user_id, 
+                address_type: address_type || 'Home', 
+                receiver_name, 
+                full_address, 
+                receiver_phone 
+            }])
+            .select();
+
+        if (error) throw error;
+        res.json({ status: 'success', message: 'Address successfully save ho gaya!', data });
+    } catch (error) {
+        console.error("❌ Add Address Error:", error);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// 2. Get All Addresses (Kise user ke saare addresses fetch karne ke liye)
+app.get('/user/addresses/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const { data, error } = await supabase
+            .from('user_addresses')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false }); // Sabse naya address upar dikhega
+
+        if (error) throw error;
+        res.json({ status: 'success', data });
+    } catch (error) {
+        console.error("❌ Fetch Address Error:", error);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// 3. Edit/Update Address (Save kiye hue address ko edit karne ke liye)
+app.post('/user/address/update', async (req, res) => {
+    const { id, address_type, receiver_name, full_address, receiver_phone } = req.body;
+
+    if (!id) {
+        return res.status(400).json({ status: 'error', message: 'Address ID zaroori hai update karne ke liye!' });
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('user_addresses')
+            .update({ 
+                address_type, 
+                receiver_name, 
+                full_address, 
+                receiver_phone 
+            })
+            .eq('id', id)
+            .select();
+
+        if (error) throw error;
+        res.json({ status: 'success', message: 'Address update ho gaya!', data });
+    } catch (error) {
+        console.error("❌ Update Address Error:", error);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// 4. Delete Address (Address delete karne ke liye)
+app.delete('/user/address/delete/:id', async (req, res) => {
+    const addressId = req.params.id;
+
+    try {
+        const { error } = await supabase
+            .from('user_addresses')
+            .delete()
+            .eq('id', addressId);
+
+        if (error) throw error;
+        res.json({ status: 'success', message: 'Address delete kar diya gaya hai!' });
+    } catch (error) {
+        console.error("❌ Delete Address Error:", error);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
