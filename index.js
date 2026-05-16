@@ -3,7 +3,9 @@ const cors = require('cors');
 const axios = require('axios');
 const https = require('https');
 const { createClient } = require('@supabase/supabase-js');
-const Razorpay = require('razorpay'); // 🔥 NAYA IMPORT: Razorpay
+const Razorpay = require('razorpay'); 
+const crypto = require('crypto'); // 🔥 NAYA AYA HAI: Payment verify karne ke liye
+
 require('dotenv').config();
 
 const app = express();
@@ -25,7 +27,6 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // ----------------------
 
 // --- RAZORPAY SETUP ---
-// 🔥 Isko hum Render ke Environment variables se uthayenge
 const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID, 
     key_secret: process.env.RAZORPAY_KEY_SECRET,
@@ -44,14 +45,14 @@ app.get('/', (req, res) => {
 // Order Create API for App
 app.post('/create-payment', async (req, res) => {
     try {
-        const { amount } = req.body; // Amount App se aayega
+        const { amount } = req.body; 
         
         if (!amount) {
             return res.status(400).json({ status: "error", message: "Amount is required" });
         }
 
         const options = {
-            amount: Math.round(amount * 100), // Razorpay paise me leta hai (Rs 1 = 100 paise)
+            amount: Math.round(amount * 100), 
             currency: "INR",
             receipt: "receipt_" + Math.random().toString(36).substring(7),
         };
@@ -66,6 +67,37 @@ app.post('/create-payment', async (req, res) => {
     } catch (error) {
         console.error("❌ Razorpay Error:", error);
         res.status(500).json({ status: "error", message: "Payment order fail ho gaya", error: error.message });
+    }
+});
+
+
+// 🔥 NAYA AYA HAI: Payment Verification API 🔥
+app.post('/verify-payment', (req, res) => {
+    try {
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+            return res.status(400).json({ status: "error", message: "Missing Razorpay details" });
+        }
+
+        // Signature banane ka formula
+        const sign = razorpay_order_id + "|" + razorpay_payment_id;
+        
+        const expectedSign = crypto
+            .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+            .update(sign.toString())
+            .digest("hex");
+
+        if (razorpay_signature === expectedSign) {
+            console.log("✅ Payment Verified! Payment ID:", razorpay_payment_id);
+            return res.status(200).json({ status: "success", message: "Payment verified successfully", payment_id: razorpay_payment_id });
+        } else {
+            console.error("❌ Invalid Signature Detected!");
+            return res.status(400).json({ status: "error", message: "Invalid payment signature!" });
+        }
+    } catch (error) {
+        console.error("❌ Verification Error:", error);
+        res.status(500).json({ status: "error", message: "Verification failed", error: error.message });
     }
 });
 
@@ -703,6 +735,7 @@ app.delete('/user/address/delete/:id', async (req, res) => {
 
 // 1. PLACE ORDER (Customer App se Order place karne par)
 app.post('/order/place', async (req, res) => {
+    // 🔥 NAYA AYA HAI: payment_id add kiya gaya hai
     const { 
         user_id, 
         restaurant_id, 
@@ -712,7 +745,8 @@ app.post('/order/place', async (req, res) => {
         item_total, 
         delivery_charge, 
         grand_total, 
-        payment_mode 
+        payment_mode,
+        payment_id // Ya toh Razorpay ki ID aayegi ya phir null
     } = req.body;
 
     if (!user_id || !restaurant_id || !order_items || !grand_total) {
@@ -732,6 +766,7 @@ app.post('/order/place', async (req, res) => {
                 delivery_charge,
                 grand_total,
                 payment_mode: payment_mode || 'COD',
+                payment_id: payment_id || null, // 🔥 NAYA AYA HAI
                 order_status: 'Pending' 
             }])
             .select()
