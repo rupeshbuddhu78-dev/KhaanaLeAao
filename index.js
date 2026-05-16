@@ -1,8 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
-const https = require('https'); // 🔥 Naya import
+const https = require('https');
 const { createClient } = require('@supabase/supabase-js');
+const Razorpay = require('razorpay'); // 🔥 NAYA IMPORT: Razorpay
 require('dotenv').config();
 
 const app = express();
@@ -23,10 +24,53 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 // ----------------------
 
+// --- RAZORPAY SETUP ---
+// 🔥 Isko hum Render ke Environment variables se uthayenge
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID, 
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+// ----------------------
+
 // Test Route
 app.get('/', (req, res) => {
-  res.send('KhaanaLeAao ka Backend aur Supabase dono taiyaar hain! 🚀🍲');
+  res.send('KhaanaLeAao ka Backend, Supabase aur Razorpay teeno taiyaar hain! 🚀🍲💳');
 });
+
+// ==========================================
+// 🔥 PAYMENT GATEWAY ROUTES (RAZORPAY) 🔥
+// ==========================================
+
+// Order Create API for App
+app.post('/create-payment', async (req, res) => {
+    try {
+        const { amount } = req.body; // Amount App se aayega
+        
+        if (!amount) {
+            return res.status(400).json({ status: "error", message: "Amount is required" });
+        }
+
+        const options = {
+            amount: Math.round(amount * 100), // Razorpay paise me leta hai (Rs 1 = 100 paise)
+            currency: "INR",
+            receipt: "receipt_" + Math.random().toString(36).substring(7),
+        };
+
+        const order = await razorpay.orders.create(options);
+        
+        res.status(200).json({
+            status: "success",
+            order_id: order.id,
+            amount: options.amount
+        });
+    } catch (error) {
+        console.error("❌ Razorpay Error:", error);
+        res.status(500).json({ status: "error", message: "Payment order fail ho gaya", error: error.message });
+    }
+});
+
+
+// ... [BAAKI TUMHARA PURANA CODE YAHAN SE WAISA HI RAHEGA] ...
 
 // 1. Asli Route: OTP Bhejne ke liye
 app.post('/send-otp', async (req, res) => {
@@ -660,7 +704,7 @@ app.post('/order/place', async (req, res) => {
     const { 
         user_id, 
         restaurant_id, 
-        restaurant_name, // 🔥 NAYA: Android se ab ye bhi aayega
+        restaurant_name, 
         order_items, 
         delivery_address, 
         item_total, 
@@ -669,7 +713,6 @@ app.post('/order/place', async (req, res) => {
         payment_mode 
     } = req.body;
 
-    // Check karo ki zaroori cheezein mil rahi hain ya nahi
     if (!user_id || !restaurant_id || !order_items || !grand_total) {
         return res.status(400).json({ status: 'error', message: 'Order details missing hain!' });
     }
@@ -680,7 +723,7 @@ app.post('/order/place', async (req, res) => {
             .insert([{
                 user_id,
                 restaurant_id,
-                restaurant_name, // 🔥 NAYA: Database mein save kar rahe hain
+                restaurant_name, 
                 order_items, 
                 delivery_address,
                 item_total,
@@ -703,12 +746,12 @@ app.post('/order/place', async (req, res) => {
     }
 });
 
-// 2. GET CUSTOMER ORDERS (Isme kuch change nahi karna, select '*' sab le aayega)
+// 2. GET CUSTOMER ORDERS
 app.get('/order/customer/:userId', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('orders')
-            .select('*') // '*' matlab saare columns, restaurant_name apne aap aa jayega
+            .select('*') 
             .eq('user_id', req.params.userId)
             .order('created_at', { ascending: false });
 
@@ -719,7 +762,7 @@ app.get('/order/customer/:userId', async (req, res) => {
     }
 });
 
-// 3. GET PARTNER ORDERS (Restaurant wale ko orders dikhane ke liye)
+// 3. GET PARTNER ORDERS
 app.get('/order/partner/:restaurantId', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -735,10 +778,9 @@ app.get('/order/partner/:restaurantId', async (req, res) => {
     }
 });
 
-// 4. UPDATE ORDER STATUS (Partner app se Accept/Reject/Deliver karne ke liye)
+// 4. UPDATE ORDER STATUS
 app.post('/order/update-status', async (req, res) => {
     const { order_id, status } = req.body;
-    // Status can be: 'Accepted', 'Preparing', 'Out for Delivery', 'Delivered', 'Cancelled'
 
     if (!order_id || !status) {
         return res.status(400).json({ status: 'error', message: 'Order ID aur Naya Status zaroori hai!' });
@@ -759,7 +801,7 @@ app.post('/order/update-status', async (req, res) => {
 });
 
 // ==========================================
-// 🛡️ ADMIN POWERS (Super Admin routes)
+// 🛡️ ADMIN POWERS
 // ==========================================
 
 // A. ADMIN: View All Orders
@@ -777,7 +819,7 @@ app.get('/admin/all-orders', async (req, res) => {
     }
 });
 
-// B. ADMIN: Delete/Remove Spam Order
+// B. ADMIN: Delete Order
 app.delete('/admin/delete-order/:id', async (req, res) => {
     try {
         const { error } = await supabase
@@ -792,7 +834,7 @@ app.delete('/admin/delete-order/:id', async (req, res) => {
     }
 });
 
-// C. ADMIN: Edit Order (Force change status, refund, etc)
+// C. ADMIN: Edit Order
 app.post('/admin/edit-order', async (req, res) => {
     const { order_id, new_status, new_total } = req.body;
     try {
