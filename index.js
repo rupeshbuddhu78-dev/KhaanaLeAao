@@ -27,14 +27,14 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // --- RAZORPAY SETUP ---
 // 🔥 Isko hum Render ke Environment variables se uthayenge
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID, 
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
+    key_id: process.env.RAZORPAY_KEY_ID, 
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 // ----------------------
 
 // Test Route
 app.get('/', (req, res) => {
-  res.send('KhaanaLeAao ka Backend, Supabase aur Razorpay teeno taiyaar hain! 🚀🍲💳');
+    res.send('KhaanaLeAao ka Backend, Supabase aur Razorpay teeno taiyaar hain! 🚀🍲💳');
 });
 
 // ==========================================
@@ -70,36 +70,38 @@ app.post('/create-payment', async (req, res) => {
 });
 
 
-// ... [BAAKI TUMHARA PURANA CODE YAHAN SE WAISA HI RAHEGA] ...
+// ==========================================
+// 🔥 RESTAURANT / PARTNER ROUTES 🔥
+// ==========================================
 
 // 1. Asli Route: OTP Bhejne ke liye
 app.post('/send-otp', async (req, res) => {
-  const { phone } = req.body;
+    const { phone } = req.body;
 
-  if (!phone || phone.length !== 10) {
-    return res.status(400).json({ status: 'error', message: 'Kripya sahi 10-digit number dalein' });
-  }
-
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-  try {
-    const apiKey = "0b810632-34e1-11f1-bfb4-0200cd936042"; 
-    console.log(`Sending OTP to ${phone} via 2Factor...`);
-    
-    const url = `https://2factor.in/API/V1/${apiKey}/SMS/${phone}/${otp}/OTP1`;
-    const response = await axios.get(url);
-
-    if (response.data.Status === 'Success') {
-      console.log(`✅ Success: OTP ${otp} sent to ${phone}`);
-      return res.json({ status: 'success', message: 'OTP bhej diya gaya hai', otp: otp });
-    } else {
-      console.error("❌ 2Factor Gateway Error:", response.data);
-      return res.status(500).json({ status: 'error', message: 'SMS Gateway issue' });
+    if (!phone || phone.length !== 10) {
+        return res.status(400).json({ status: 'error', message: 'Kripya sahi 10-digit number dalein' });
     }
-  } catch (error) {
-    console.error("❌ Server ka Error:", error.message);
-    return res.status(500).json({ status: 'error', message: 'Backend crash ho gaya.' });
-  }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    try {
+        const apiKey = "0b810632-34e1-11f1-bfb4-0200cd936042"; 
+        console.log(`Sending OTP to ${phone} via 2Factor...`);
+        
+        const url = `https://2factor.in/API/V1/${apiKey}/SMS/${phone}/${otp}/OTP1`;
+        const response = await axios.get(url);
+
+        if (response.data.Status === 'Success') {
+            console.log(`✅ Success: OTP ${otp} sent to ${phone}`);
+            return res.json({ status: 'success', message: 'OTP bhej diya gaya hai', otp: otp });
+        } else {
+            console.error("❌ 2Factor Gateway Error:", response.data);
+            return res.status(500).json({ status: 'error', message: 'SMS Gateway issue' });
+        }
+    } catch (error) {
+        console.error("❌ Server ka Error:", error.message);
+        return res.status(500).json({ status: 'error', message: 'Backend crash ho gaya.' });
+    }
 });
 
 // 2. Duplicate Phone Number Checking ke sath
