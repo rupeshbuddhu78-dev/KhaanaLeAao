@@ -1010,4 +1010,4 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`✅ Server port ${PORT} par daud raha hai 🍲`);
   console.log(`✅ Supabase, Razorpay aur Cloudinary connect ho chuke hain!`);
-});
+}); 
