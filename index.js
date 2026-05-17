@@ -1041,6 +1041,49 @@ app.get('/user/addresses/:userId', async (req, res) => {
     }
 });
 
+// ==========================================
+// 🔥 CUSTOMER RATING & REVIEW API (SEPARATE TABLE) 🔥
+// ==========================================
+app.post('/customer/rate-order', async (req, res) => {
+    const { order_id, rating, review_text } = req.body;
+
+    // Validation Check
+    if (!order_id || rating === undefined) {
+        return res.status(400).json({ 
+            status: 'error', 
+            message: 'Order ID aur Rating dono zaroori hain!' 
+        });
+    }
+
+    try {
+        // 🔥 Kyunki alag table hai, isliye yahan .insert() hoga, .update() nahi!
+        const { data, error } = await supabase
+            .from('reviews') // <--- Agar table ka naam alag hai toh yahan change kar lena
+            .insert([{ 
+                order_id: order_id, 
+                rating: parseInt(rating, 10), 
+                review_text: review_text || null 
+            }])
+            .select();
+
+        if (error) throw error;
+
+        // Success Response (Android App ke liye)
+        res.status(200).json({ 
+            status: 'success', 
+            message: 'Review submit karne ke liye dhanyawad! ❤️',
+            data: data[0]
+        });
+
+    } catch (error) {
+        console.error("❌ Rate Order Server Error:", error.message);
+        res.status(500).json({ 
+            status: 'error', 
+            message: error.message 
+        });
+    }
+});
+
 // Server Start Karna
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
