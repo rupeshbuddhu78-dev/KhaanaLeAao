@@ -173,48 +173,91 @@ app.post('/order/cancel', async (req, res) => {
 });
 
 // ==========================================
-// 🔍 CHECK REFUND LIVE STATUS API
 // ==========================================
-app.get('/order/refund-status/:order_id', async (req, res) => {
-    const { order_id } = req.params;
-
+// 🚀 🔥 LIVE TRACKING API (AUTO-REFUND CHECK KE SATH) 🔥 🚀
+// ==========================================
+app.get('/order/track/:orderId', async (req, res) => {
     try {
-        // 1. Order aur Refund ID database se nikalo
-        const { data: order, error } = await supabase
+        const orderId = req.params.orderId;
+
+        // 1. Order details nikalo
+        const { data: orderData, error: orderError } = await supabase
             .from('orders')
-            .select('razorpay_refund_id, refund_status')
-            .eq('id', order_id)
+            .select('*')
+            .eq('id', orderId)
             .single();
 
-        if (error || !order) {
+        if (orderError || !orderData) {
             return res.status(404).json({ status: 'error', message: 'Order nahi mila!' });
         }
 
-        if (!order.razorpay_refund_id) {
-            return res.status(400).json({ status: 'error', message: 'Is order ka koi online refund ID nahi hai.' });
+        // 🔥 NAYA JADOO: AUTO-CHECK REFUND STATUS 🔥
+        // Agar order cancel hai, refund online tha, aur abhi tak 'Completed' nahi hua hai
+        if (orderData.order_status === 'Cancelled' && orderData.razorpay_refund_id && orderData.refund_status !== 'Completed') {
+            try {
+                // Background me chupke se Razorpay se pucho
+                const refundDetails = await razorpay.refunds.fetch(orderData.razorpay_refund_id);
+                
+                // Agar Razorpay ne bola 'processed' (Completed)
+                if (refundDetails.status === 'processed') {
+                    // Database me update kar do
+                    await supabase.from('orders')
+                        .update({ refund_status: 'Completed' })
+                        .eq('id', orderId);
+                    
+                    // App ko bhejne wale data me bhi 'Completed' kar do
+                    orderData.refund_status = 'Completed';
+                }
+            } catch (razorpayErr) {
+                console.error("Auto Refund Check Error:", razorpayErr.message);
+                // Error aaye toh koi baat nahi, purana status hi dikhayenge
+            }
         }
 
-        // 2. Razorpay se Live Status maango
-        const refundDetails = await razorpay.refunds.fetch(order.razorpay_refund_id);
-
-        // Razorpay ke statuses hote hain: 'pending', 'processed', 'failed'
-        let liveStatus = refundDetails.status; 
-
-        // 3. (Optional) Database mein status update kar do agar 'processed' ho gaya hai
-        if (liveStatus === 'processed' && order.refund_status !== 'Completed') {
-            await supabase.from('orders')
-                .update({ refund_status: 'Completed' })
-                .eq('id', order_id);
+        // 2. Items ko text mein convert karo
+        let itemsSummary = "View Items";
+        if (orderData.order_items && Array.isArray(orderData.order_items)) {
+            itemsSummary = orderData.order_items.map(item => `${item.qty} x ${item.name}`).join(', ');
         }
 
-        res.json({
-            status: 'success',
-            razorpay_status: liveStatus, // pending, processed, failed
-            message: `Refund status is currently: ${liveStatus}`
+        // 3. Restaurant ka asli address aur phone nikalo
+        let restAddress = "Address not found";
+        let restPhone = "";
+        
+        if (orderData.restaurant_id) {
+            const { data: restData } = await supabase
+                .from('restaurants')
+                .select('address, phone')
+                .eq('phone', orderData.restaurant_id) 
+                .maybeSingle();
+                
+            if (restData) {
+                restAddress = restData.address;
+                restPhone = restData.phone;
+            }
+        }
+
+       // 4. App me bhejne ke liye Data tayyar karna
+        const liveData = {
+            order_status: orderData.order_status || "Pending",
+            refund_status: orderData.refund_status || "Not Applicable", // Ab ye automatically update hoke aayega!
+            delivery_address: orderData.delivery_address || "Address not provided",
+            restaurant_name: orderData.restaurant_name || "Restaurant",
+            restaurant_address: restAddress, 
+            restaurant_phone: restPhone,     
+            items_summary: itemsSummary,
+            receiver_name: orderData.receiver_name || "User Name", 
+            receiver_phone: orderData.receiver_phone || "No Phone" 
+        };
+        
+        res.status(200).json({
+            status: "success",
+            data: liveData
         });
+        
     } catch (error) {
-        console.error("❌ Fetch Refund Status Error:", error);
-        res.status(500).json({ status: 'error', message: 'Refund status check karne me error aayi.' });
+        console.error("❌ Track Order Error:", error);
+        res.status(500).json({ status: 'error', message: error.message });
     }
 });
 
