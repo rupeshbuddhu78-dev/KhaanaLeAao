@@ -4,7 +4,7 @@ const axios = require('axios');
 const https = require('https');
 const { createClient } = require('@supabase/supabase-js');
 const Razorpay = require('razorpay'); 
-const crypto = require('crypto'); // 🔥 NAYA AYA HAI: Payment verify karne ke liye
+const crypto = require('crypto');
 
 require('dotenv').config();
 
@@ -42,7 +42,6 @@ app.get('/', (req, res) => {
 // 🔥 PAYMENT GATEWAY ROUTES (RAZORPAY) 🔥
 // ==========================================
 
-// Order Create API for App
 app.post('/create-payment', async (req, res) => {
     try {
         const { amount } = req.body; 
@@ -71,7 +70,6 @@ app.post('/create-payment', async (req, res) => {
 });
 
 
-// 🔥 NAYA AYA HAI: Payment Verification API 🔥
 app.post('/verify-payment', (req, res) => {
     try {
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
@@ -80,7 +78,6 @@ app.post('/verify-payment', (req, res) => {
             return res.status(400).json({ status: "error", message: "Missing Razorpay details" });
         }
 
-        // Signature banane ka formula
         const sign = razorpay_order_id + "|" + razorpay_payment_id;
         
         const expectedSign = crypto
@@ -101,12 +98,10 @@ app.post('/verify-payment', (req, res) => {
     }
 });
 
-
 // ==========================================
 // 🔥 RESTAURANT / PARTNER ROUTES 🔥
 // ==========================================
 
-// 1. Asli Route: OTP Bhejne ke liye
 app.post('/send-otp', async (req, res) => {
     const { phone } = req.body;
 
@@ -136,7 +131,6 @@ app.post('/send-otp', async (req, res) => {
     }
 });
 
-// 2. Duplicate Phone Number Checking ke sath
 app.post('/complete-registration', async (req, res) => {
     const { name, phone, password } = req.body;
     try {
@@ -163,7 +157,7 @@ app.post('/complete-registration', async (req, res) => {
         const { error: insertError } = await supabase
             .from('restaurants')
             .insert([{ name, phone, password, status: 'incomplete' }]);
-
+        
         if (insertError) throw insertError;
         res.json({ status: 'success', message: 'Basic Account Created!' });
     } catch (error) {
@@ -172,7 +166,6 @@ app.post('/complete-registration', async (req, res) => {
     }
 });
 
-// 3. Login ke liye
 app.post('/login-partner', async (req, res) => {
     const { phone, password } = req.body;
     try {
@@ -197,7 +190,6 @@ app.post('/login-partner', async (req, res) => {
     }
 });
 
-// 4. 3-Step Restaurant Registration Details Save karne ke liye
 app.post('/register-restaurant-details', async (req, res) => {
     const { 
         phone, restaurantName, ownerName, address, cuisine, foodType, 
@@ -224,8 +216,8 @@ app.post('/register-restaurant-details', async (req, res) => {
                 status: 'pending_verification' 
             })
             .eq('phone', phone)
-            .select(); 
-
+            .select();
+            
         if (error) throw error;
         res.json({ status: 'success', message: 'Restaurant details submitted successfully!' });
     } catch (error) {
@@ -234,7 +226,6 @@ app.post('/register-restaurant-details', async (req, res) => {
     }
 });
 
-// 5. App refresh button aur auto-status ke liye
 app.post('/check-status', async (req, res) => {
     const { phone } = req.body;
     try {
@@ -256,7 +247,6 @@ app.post('/check-status', async (req, res) => {
     }
 });
 
-// 6. Admin Panel ke liye sabhi restaurants fetch karna
 app.get('/admin/restaurants', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -271,7 +261,6 @@ app.get('/admin/restaurants', async (req, res) => {
     }
 });
 
-// 7. Admin Panel se Restaurant Approve aur Suspend karne ke liye
 app.post('/admin/approve-restaurant', async (req, res) => {
     const { phone, status } = req.body; 
     const finalStatus = status ? status : 'active'; 
@@ -293,7 +282,6 @@ app.post('/admin/approve-restaurant', async (req, res) => {
 // 🔥 MAIN DASHBOARD ROUTES
 // ----------------------------------------------------
 
-// 8. Dashboard pe Restaurant ka naam aur status fetch karne ke liye (UPDATED)
 app.get('/partner/dashboard/:phone', async (req, res) => {
     const { phone } = req.params;
     try {
@@ -314,7 +302,6 @@ app.get('/partner/dashboard/:phone', async (req, res) => {
     }
 });
 
-// 9. Switch ON/OFF karne par Database update karne ke liye
 app.post('/partner/update-status', async (req, res) => {
     const { phone, is_online } = req.body;
     try {
@@ -334,7 +321,6 @@ app.post('/partner/update-status', async (req, res) => {
 // 🔥 MENU MANAGEMENT ROUTES
 // ----------------------------------------------------
 
-// 10. Nayi Category Add karne ke liye
 app.post('/partner/add-category', async (req, res) => {
     const { restaurant_phone, name, sort_order } = req.body;
     try {
@@ -342,7 +328,7 @@ app.post('/partner/add-category', async (req, res) => {
             .from('menu_categories')
             .insert([{ restaurant_phone, name, sort_order }])
             .select();
-            
+             
         if (error) throw error;
         res.json({ status: 'success', message: 'Category added successfully!', data });
     } catch (error) {
@@ -350,7 +336,6 @@ app.post('/partner/add-category', async (req, res) => {
     }
 });
 
-// 11. Saari Categories Fetch karne ke liye
 app.get('/partner/categories/:phone', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -366,7 +351,6 @@ app.get('/partner/categories/:phone', async (req, res) => {
     }
 });
 
-// 12. Naya Menu Item (Dish) Add karne ke liye
 app.post('/partner/add-item', async (req, res) => {
     const { 
         restaurant_phone, category_id, item_name, description, 
@@ -389,7 +373,6 @@ app.post('/partner/add-item', async (req, res) => {
     }
 });
 
-// 13. Pura Menu Fetch karne ke liye
 app.get('/partner/menu/:phone', async (req, res) => {
     try {
         const { data: menuItems, error: menuErr } = await supabase
@@ -422,7 +405,6 @@ app.get('/partner/menu/:phone', async (req, res) => {
                 addons: addons ? addons.filter(a => a.item_id === item.id) : []
             };
         });
-
         res.json({ status: 'success', data: completeMenu });
 
     } catch (error) {
@@ -431,7 +413,6 @@ app.get('/partner/menu/:phone', async (req, res) => {
     }
 });
 
-// 14. ADD MENU ITEM (UPDATED WITH VARIANTS)
 app.post('/add-menu-item', async (req, res) => {
     try {
         const { 
@@ -462,7 +443,7 @@ app.post('/add-menu-item', async (req, res) => {
             }])
             .select()
             .single();
-
+            
         if (itemError) throw itemError;
 
         const newDishId = menuItem.id;
@@ -486,14 +467,12 @@ app.post('/add-menu-item', async (req, res) => {
         }
 
         res.status(200).json({ status: "success", message: "Dish saved successfully!" });
-
     } catch (error) {
         console.error("❌ API 14 Server Crash Error:", error);
         res.status(500).json({ error: error.message || "Internal Server Error" });
     }
 });
 
-// 15A. UPDATE ITEM AVAILABILITY
 app.post('/partner/update-item-availability', async (req, res) => {
     const { id, is_available } = req.body;
     try {
@@ -514,7 +493,6 @@ app.post('/partner/update-item-availability', async (req, res) => {
     }
 });
 
-// 15B. UPDATE VARIANT AVAILABILITY 
 app.post('/partner/update-variant-availability', async (req, res) => {
     const { id, is_available } = req.body;
     try {
@@ -535,7 +513,6 @@ app.post('/partner/update-variant-availability', async (req, res) => {
     }
 });
 
-// 16. DELETE MENU ITEM 
 app.delete('/partner/delete-item/:id', async (req, res) => {
     try {
         const itemId = parseInt(req.params.id, 10);
@@ -552,7 +529,6 @@ app.delete('/partner/delete-item/:id', async (req, res) => {
     }
 });
 
-// 17. UPDATE FULL MENU ITEM 
 app.post('/partner/update-menu-item', async (req, res) => {
     try {
         const { 
@@ -595,7 +571,6 @@ app.post('/partner/update-menu-item', async (req, res) => {
 // 🔥 CUSTOMER (USER) AUTHENTICATION ROUTES
 // ==========================================
 
-// 18. User Check API
 app.post('/user/check', async (req, res) => {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ status: 'error', message: 'Phone number zaroori hai!' });
@@ -613,7 +588,6 @@ app.post('/user/check', async (req, res) => {
     }
 });
 
-// 19. User Register API
 app.post('/user/register', async (req, res) => {
     const { phone, full_name, email } = req.body;
     if (!phone || !full_name) return res.status(400).json({ status: 'error', message: 'Phone aur Name dono zaroori hain!' });
@@ -634,7 +608,6 @@ app.post('/user/register', async (req, res) => {
 // 🔥 CUSTOMER APP HOME SCREEN ROUTES
 // ==========================================
 
-// 1. Saare active restaurants fetch karna
 app.get('/customer/restaurants', async (req, res) => {
     try {
         const { data, error } = await supabase.from('restaurants').select('phone, name, restaurant_name, cuisine_type, logo_url, is_online').eq('status', 'active');
@@ -645,7 +618,6 @@ app.get('/customer/restaurants', async (req, res) => {
     }
 });
 
-// 2. Categories Fetch karna
 app.get('/customer/categories', async (req, res) => {
     try {
         const { data, error } = await supabase.from('app_categories').select('*');
@@ -665,7 +637,6 @@ app.get('/customer/categories', async (req, res) => {
     }
 });
 
-// 3. Android App se Profile Edit/Update karne ke liye
 app.post('/partner/updateProfile', async (req, res) => {
     const { phone, field, value } = req.body;
     if (!phone || !field) return res.status(400).json({ status: 'error', message: 'Phone aur field name zaroori hai!' });
@@ -733,9 +704,7 @@ app.delete('/user/address/delete/:id', async (req, res) => {
 // 🚀 🔥 NAYA: ORDER MANAGEMENT & ADMIN POWERS 🔥 🚀
 // ==========================================
 
-// 1. PLACE ORDER (Customer App se Order place karne par)
 app.post('/order/place', async (req, res) => {
-    // 🔥 NAYA AYA HAI: payment_id add kiya gaya hai
     const { 
         user_id, 
         restaurant_id, 
@@ -746,7 +715,7 @@ app.post('/order/place', async (req, res) => {
         delivery_charge, 
         grand_total, 
         payment_mode,
-        payment_id // Ya toh Razorpay ki ID aayegi ya phir null
+        payment_id 
     } = req.body;
 
     if (!user_id || !restaurant_id || !order_items || !grand_total) {
@@ -766,7 +735,7 @@ app.post('/order/place', async (req, res) => {
                 delivery_charge,
                 grand_total,
                 payment_mode: payment_mode || 'COD',
-                payment_id: payment_id || null, // 🔥 NAYA AYA HAI
+                payment_id: payment_id || null, 
                 order_status: 'Pending' 
             }])
             .select()
@@ -783,7 +752,6 @@ app.post('/order/place', async (req, res) => {
     }
 });
 
-// 2. GET CUSTOMER ORDERS
 app.get('/order/customer/:userId', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -799,7 +767,6 @@ app.get('/order/customer/:userId', async (req, res) => {
     }
 });
 
-// 3. GET PARTNER ORDERS
 app.get('/order/partner/:restaurantId', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -815,7 +782,6 @@ app.get('/order/partner/:restaurantId', async (req, res) => {
     }
 });
 
-// 4. UPDATE ORDER STATUS
 app.post('/order/update-status', async (req, res) => {
     const { order_id, status } = req.body;
 
@@ -838,10 +804,56 @@ app.post('/order/update-status', async (req, res) => {
 });
 
 // ==========================================
+// 🚀 🔥 NAYA AYA HAI: LIVE TRACKING API 🔥 🚀
+// ==========================================
+app.get('/order/track/:orderId', async (req, res) => {
+    try {
+        const orderId = req.params.orderId;
+
+        // 1. Supabase ke database se Order ki details nikalo
+        const { data: orderData, error: orderError } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('id', orderId)
+            .single();
+
+        if (orderError || !orderData) {
+            return res.status(404).json({ status: 'error', message: 'Order nahi mila!' });
+        }
+
+        // 2. Order items ko ek text/string mein convert karna 
+        // Jaisa video mein [ {"qty": 1, "name": "Fish"} ] dikh raha hai
+        let itemsSummary = "View Items";
+        if (orderData.order_items && Array.isArray(orderData.order_items)) {
+            itemsSummary = orderData.order_items.map(item => `${item.qty} x ${item.name}`).join(', ');
+        }
+
+        // 3. App me bhejne ke liye Data tayyar karna
+        const liveData = {
+            order_status: orderData.order_status || "Pending",
+            delivery_address: orderData.delivery_address || "Address not provided",
+            restaurant_name: orderData.restaurant_name || "Restaurant",
+            restaurant_address: "Restaurant se details nikal rahe hain...", // Hardcoded for simplicity right now
+            items_summary: itemsSummary,
+            customer_phone: "Delivery Partner will contact you" 
+        };
+
+        res.status(200).json({
+            status: "success",
+            data: liveData
+        });
+
+    } catch (error) {
+        console.error("❌ Track Order Error:", error);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+
+// ==========================================
 // 🛡️ ADMIN POWERS
 // ==========================================
 
-// A. ADMIN: View All Orders
 app.get('/admin/all-orders', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -856,7 +868,6 @@ app.get('/admin/all-orders', async (req, res) => {
     }
 });
 
-// B. ADMIN: Delete Order
 app.delete('/admin/delete-order/:id', async (req, res) => {
     try {
         const { error } = await supabase
@@ -871,7 +882,6 @@ app.delete('/admin/delete-order/:id', async (req, res) => {
     }
 });
 
-// C. ADMIN: Edit Order
 app.post('/admin/edit-order', async (req, res) => {
     const { order_id, new_status, new_total } = req.body;
     try {
