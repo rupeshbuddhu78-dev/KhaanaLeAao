@@ -1005,6 +1005,42 @@ app.post('/admin/edit-order', async (req, res) => {
     }
 });
 
+// ==========================================
+// 🔥 FETCH USER ORDERS & ADDRESSES COUNT
+// ==========================================
+
+// 1. Fetch User Orders
+app.get('/order/customer/:userId', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('user_id', req.params.userId);
+
+        if (error) throw error;
+        res.json({ status: 'success', data: data });
+    } catch (error) {
+        console.error("Orders Fetch Error:", error);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// 2. Fetch User Addresses
+app.get('/user/addresses/:userId', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('user_addresses')
+            .select('*')
+            .eq('user_id', req.params.userId);
+
+        if (error) throw error;
+        res.json({ status: 'success', data: data });
+    } catch (error) {
+        console.error("Addresses Fetch Error:", error);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
 // Server Start Karna
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
