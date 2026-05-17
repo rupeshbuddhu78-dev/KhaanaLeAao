@@ -708,6 +708,9 @@ app.post('/order/place', async (req, res) => {
         restaurant_name, 
         order_items, 
         delivery_address, 
+        receiver_name,          // 🔥 NAYA: App se aayega
+        receiver_phone,         // 🔥 NAYA: App se aayega
+        cooking_instructions,   // 🔥 NAYA: App se aayega
         item_total, 
         delivery_charge, 
         grand_total, 
@@ -728,6 +731,9 @@ app.post('/order/place', async (req, res) => {
                 restaurant_name, 
                 order_items, 
                 delivery_address,
+                receiver_name,          // 🔥 NAYA: Database mein save hoga
+                receiver_phone,         // 🔥 NAYA: Database mein save hoga
+                cooking_instructions,   // 🔥 NAYA: Database mein save hoga
                 item_total,
                 delivery_charge,
                 grand_total,
@@ -737,10 +743,12 @@ app.post('/order/place', async (req, res) => {
             }])
             .select()
             .single();
+
         if (error) throw error;
         
         console.log("✅ New Order Placed with Name:", restaurant_name);
         res.json({ status: 'success', message: 'Order Confirmed!', order: data });
+
     } catch (error) {
         console.error("❌ Place Order Error:", error);
         res.status(500).json({ status: 'error', message: error.message });
