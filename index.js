@@ -840,15 +840,18 @@ app.get('/order/track/:orderId', async (req, res) => {
             }
         }
 
-        // 4. App me bhejne ke liye Data tayyar karna
+       // 4. App me bhejne ke liye Data tayyar karna
         const liveData = {
             order_status: orderData.order_status || "Pending",
             delivery_address: orderData.delivery_address || "Address not provided",
             restaurant_name: orderData.restaurant_name || "Restaurant",
-            restaurant_address: restAddress, // 🔥 Ab yahan database se asli address aayega
-            restaurant_phone: restPhone,     // 🔥 Ab yahan database se asli phone aayega
+            restaurant_address: restAddress, // 🔥 Database se asli restaurant address
+            restaurant_phone: restPhone,     // 🔥 Database se asli restaurant phone
             items_summary: itemsSummary,
-            customer_phone: orderData.user_id || "No Phone" // Customer ka phone
+            
+            // 🔥 YAHAN CHANGE HUA HAI: Ab user ka asli naam aur phone aayega
+            receiver_name: orderData.receiver_name || "User Name", 
+            receiver_phone: orderData.receiver_phone || "No Phone" 
         };
 
         res.status(200).json({
