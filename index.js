@@ -69,7 +69,6 @@ app.post('/create-payment', async (req, res) => {
     }
 });
 
-
 app.post('/verify-payment', (req, res) => {
     try {
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
@@ -157,7 +156,6 @@ app.post('/complete-registration', async (req, res) => {
         const { error: insertError } = await supabase
             .from('restaurants')
             .insert([{ name, phone, password, status: 'incomplete' }]);
-        
         if (insertError) throw insertError;
         res.json({ status: 'success', message: 'Basic Account Created!' });
     } catch (error) {
@@ -443,7 +441,6 @@ app.post('/add-menu-item', async (req, res) => {
             }])
             .select()
             .single();
-            
         if (itemError) throw itemError;
 
         const newDishId = menuItem.id;
@@ -701,7 +698,7 @@ app.delete('/user/address/delete/:id', async (req, res) => {
 });
 
 // ==========================================
-// 🚀 🔥 NAYA: ORDER MANAGEMENT & ADMIN POWERS 🔥 🚀
+// 🚀 🔥 ORDER MANAGEMENT & ADMIN POWERS 🔥 🚀
 // ==========================================
 
 app.post('/order/place', async (req, res) => {
@@ -740,12 +737,10 @@ app.post('/order/place', async (req, res) => {
             }])
             .select()
             .single();
-
         if (error) throw error;
         
         console.log("✅ New Order Placed with Name:", restaurant_name);
         res.json({ status: 'success', message: 'Order Confirmed!', order: data });
-
     } catch (error) {
         console.error("❌ Place Order Error:", error);
         res.status(500).json({ status: 'error', message: error.message });
@@ -804,13 +799,13 @@ app.post('/order/update-status', async (req, res) => {
 });
 
 // ==========================================
-// 🚀 🔥 NAYA AYA HAI: LIVE TRACKING API 🔥 🚀
+// 🚀 🔥 NAYA AYA HAI: LIVE TRACKING API (UPDATED) 🔥 🚀
 // ==========================================
 app.get('/order/track/:orderId', async (req, res) => {
     try {
         const orderId = req.params.orderId;
 
-        // 1. Supabase ke database se Order ki details nikalo
+        // 1. Order details nikalo
         const { data: orderData, error: orderError } = await supabase
             .from('orders')
             .select('*')
@@ -821,21 +816,39 @@ app.get('/order/track/:orderId', async (req, res) => {
             return res.status(404).json({ status: 'error', message: 'Order nahi mila!' });
         }
 
-        // 2. Order items ko ek text/string mein convert karna 
-        // Jaisa video mein [ {"qty": 1, "name": "Fish"} ] dikh raha hai
+        // 2. Items ko text mein convert karo
         let itemsSummary = "View Items";
         if (orderData.order_items && Array.isArray(orderData.order_items)) {
             itemsSummary = orderData.order_items.map(item => `${item.qty} x ${item.name}`).join(', ');
         }
 
-        // 3. App me bhejne ke liye Data tayyar karna
+        // 3. 🔥 YAHAN HAI MAIN FIX: Restaurant ka asli address aur phone nikalo
+        let restAddress = "Address not found";
+        let restPhone = "";
+        
+        if (orderData.restaurant_id) {
+            // Restaurant table se data nikal rahe hain
+            const { data: restData } = await supabase
+                .from('restaurants')
+                .select('address, phone')
+                .eq('phone', orderData.restaurant_id) 
+                .maybeSingle();
+            
+            if (restData) {
+                restAddress = restData.address;
+                restPhone = restData.phone;
+            }
+        }
+
+        // 4. App me bhejne ke liye Data tayyar karna
         const liveData = {
             order_status: orderData.order_status || "Pending",
             delivery_address: orderData.delivery_address || "Address not provided",
             restaurant_name: orderData.restaurant_name || "Restaurant",
-            restaurant_address: "Restaurant se details nikal rahe hain...", // Hardcoded for simplicity right now
+            restaurant_address: restAddress, // 🔥 Ab yahan database se asli address aayega
+            restaurant_phone: restPhone,     // 🔥 Ab yahan database se asli phone aayega
             items_summary: itemsSummary,
-            customer_phone: "Delivery Partner will contact you" 
+            customer_phone: orderData.user_id || "No Phone" // Customer ka phone
         };
 
         res.status(200).json({
@@ -848,7 +861,6 @@ app.get('/order/track/:orderId', async (req, res) => {
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
-
 
 // ==========================================
 // 🛡️ ADMIN POWERS
