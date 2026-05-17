@@ -126,6 +126,7 @@ app.post('/order/cancel', async (req, res) => {
         }
 
         let refundStatus = 'Not Applicable'; // Default for COD
+        let refundIdToSave = null;
 
         // 2. 💸 RAZORPAY REFUND LOGIC (Sirf Online payments ke liye)
         if (order.payment_mode === 'ONLINE' && order.payment_id && order.payment_id !== 'N/A') {
@@ -139,10 +140,10 @@ app.post('/order/cancel', async (req, res) => {
                 
                 console.log("✅ Refund successful! Refund ID:", refund.id);
                 refundStatus = 'Initiated'; 
-                var refundIdToSave = refund.id; // 🔥 NAYA: Refund ID nikal li
+                refundIdToSave = refund.id; // 🔥 Refund ID nikal li
                 
             } catch (razorpayError) {
-                // ... error block ...
+                console.error("❌ Razorpay Refund Error:", razorpayError);
             }
         }
 
@@ -152,11 +153,11 @@ app.post('/order/cancel', async (req, res) => {
             .update({ 
                 order_status: 'Cancelled', 
                 refund_status: refundStatus,
-                razorpay_refund_id: refundIdToSave || null // 🔥 NAYA: Refund ID database me save kar di
+                razorpay_refund_id: refundIdToSave || null 
             })
             .eq('id', order_id)
             .select();
-// ... baaki ka code ...
+
         if (updateError) throw updateError;
 
         res.json({ 
@@ -165,7 +166,6 @@ app.post('/order/cancel', async (req, res) => {
             refund_status: refundStatus,
             data: updatedOrder 
         });
-
     } catch (error) {
         console.error("❌ Cancel Order Server Error:", error);
         res.status(500).json({ status: 'error', message: error.message });
@@ -212,7 +212,6 @@ app.get('/order/refund-status/:order_id', async (req, res) => {
             razorpay_status: liveStatus, // pending, processed, failed
             message: `Refund status is currently: ${liveStatus}`
         });
-
     } catch (error) {
         console.error("❌ Fetch Refund Status Error:", error);
         res.status(500).json({ status: 'error', message: 'Refund status check karne me error aayi.' });
@@ -262,7 +261,7 @@ app.post('/complete-registration', async (req, res) => {
             .single();
 
         if (existingUser) {
-            if (existingUser.status !== 'incomplete') {
+             if (existingUser.status !== 'incomplete') {
                  return res.status(400).json({ status: 'error', message: 'Ye mobile number pehle se registered hai!' });
             } else {
                 const { error: updateError } = await supabase
@@ -278,6 +277,7 @@ app.post('/complete-registration', async (req, res) => {
         const { error: insertError } = await supabase
             .from('restaurants')
             .insert([{ name, phone, password, status: 'incomplete' }]);
+            
         if (insertError) throw insertError;
         res.json({ status: 'success', message: 'Basic Account Created!' });
     } catch (error) {
@@ -296,9 +296,7 @@ app.post('/login-partner', async (req, res) => {
             .eq('password', password)
             .maybeSingle();
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
         if (data) {
             res.json({ status: 'success', partner: data });
@@ -377,7 +375,7 @@ app.get('/admin/restaurants', async (req, res) => {
         if (error) throw error;
         res.json({ status: 'success', data: data });
     } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
+         res.status(500).json({ status: 'error', message: error.message });
     }
 });
 
@@ -525,6 +523,7 @@ app.get('/partner/menu/:phone', async (req, res) => {
                 addons: addons ? addons.filter(a => a.item_id === item.id) : []
             };
         });
+        
         res.json({ status: 'success', data: completeMenu });
 
     } catch (error) {
@@ -563,6 +562,7 @@ app.post('/add-menu-item', async (req, res) => {
             }])
             .select()
             .single();
+            
         if (itemError) throw itemError;
 
         const newDishId = menuItem.id;
@@ -830,9 +830,9 @@ app.post('/order/place', async (req, res) => {
         restaurant_name, 
         order_items, 
         delivery_address, 
-        receiver_name,          // 🔥 NAYA: App se aayega
-        receiver_phone,         // 🔥 NAYA: App se aayega
-        cooking_instructions,   // 🔥 NAYA: App se aayega
+        receiver_name,          
+        receiver_phone,  
+        cooking_instructions,   
         item_total, 
         delivery_charge, 
         grand_total, 
@@ -853,9 +853,9 @@ app.post('/order/place', async (req, res) => {
                 restaurant_name, 
                 order_items, 
                 delivery_address,
-                receiver_name,          // 🔥 NAYA: Database mein save hoga
-                receiver_phone,         // 🔥 NAYA: Database mein save hoga
-                cooking_instructions,   // 🔥 NAYA: Database mein save hoga
+                receiver_name,          
+                receiver_phone,         
+                cooking_instructions,   
                 item_total,
                 delivery_charge,
                 grand_total,
@@ -865,12 +865,11 @@ app.post('/order/place', async (req, res) => {
             }])
             .select()
             .single();
-
+            
         if (error) throw error;
         
         console.log("✅ New Order Placed with Name:", restaurant_name);
         res.json({ status: 'success', message: 'Order Confirmed!', order: data });
-
     } catch (error) {
         console.error("❌ Place Order Error:", error);
         res.status(500).json({ status: 'error', message: error.message });
@@ -929,7 +928,7 @@ app.post('/order/update-status', async (req, res) => {
 });
 
 // ==========================================
-// 🚀 🔥 NAYA AYA HAI: LIVE TRACKING API (UPDATED) 🔥 🚀
+// 🚀 🔥 LIVE TRACKING API (UPDATED W/ REFUND) 🔥 🚀
 // ==========================================
 app.get('/order/track/:orderId', async (req, res) => {
     try {
@@ -952,18 +951,17 @@ app.get('/order/track/:orderId', async (req, res) => {
             itemsSummary = orderData.order_items.map(item => `${item.qty} x ${item.name}`).join(', ');
         }
 
-        // 3. 🔥 YAHAN HAI MAIN FIX: Restaurant ka asli address aur phone nikalo
+        // 3. Restaurant ka asli address aur phone nikalo
         let restAddress = "Address not found";
         let restPhone = "";
         
         if (orderData.restaurant_id) {
-            // Restaurant table se data nikal rahe hain
             const { data: restData } = await supabase
                 .from('restaurants')
                 .select('address, phone')
                 .eq('phone', orderData.restaurant_id) 
                 .maybeSingle();
-            
+                
             if (restData) {
                 restAddress = restData.address;
                 restPhone = restData.phone;
@@ -973,22 +971,24 @@ app.get('/order/track/:orderId', async (req, res) => {
        // 4. App me bhejne ke liye Data tayyar karna
         const liveData = {
             order_status: orderData.order_status || "Pending",
+            
+            // 🔥 YAHAN FIX KIYA HAI: Ye line pehle missing thi!
+            refund_status: orderData.refund_status || "Not Applicable",
+            
             delivery_address: orderData.delivery_address || "Address not provided",
             restaurant_name: orderData.restaurant_name || "Restaurant",
-            restaurant_address: restAddress, // 🔥 Database se asli restaurant address
-            restaurant_phone: restPhone,     // 🔥 Database se asli restaurant phone
+            restaurant_address: restAddress, 
+            restaurant_phone: restPhone,     
             items_summary: itemsSummary,
-            
-            // 🔥 YAHAN CHANGE HUA HAI: Ab user ka asli naam aur phone aayega
             receiver_name: orderData.receiver_name || "User Name", 
             receiver_phone: orderData.receiver_phone || "No Phone" 
         };
-
+        
         res.status(200).json({
             status: "success",
             data: liveData
         });
-
+        
     } catch (error) {
         console.error("❌ Track Order Error:", error);
         res.status(500).json({ status: 'error', message: error.message });
