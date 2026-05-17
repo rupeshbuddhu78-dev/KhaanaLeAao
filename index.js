@@ -138,11 +138,11 @@ app.post('/order/cancel', async (req, res) => {
                 });
                 
                 console.log("✅ Refund successful! Refund ID:", refund.id);
-                refundStatus = 'Initiated'; // Bank mein aane me 3-5 din lagte hain
+                refundStatus = 'Initiated'; 
+                var refundIdToSave = refund.id; // 🔥 NAYA: Refund ID nikal li
                 
             } catch (razorpayError) {
-                console.error("❌ Razorpay Refund Error:", razorpayError);
-                return res.status(500).json({ status: 'error', message: 'Payment refund fail ho gaya', error: razorpayError.message });
+                // ... error block ...
             }
         }
 
@@ -151,11 +151,12 @@ app.post('/order/cancel', async (req, res) => {
             .from('orders')
             .update({ 
                 order_status: 'Cancelled', 
-                refund_status: refundStatus 
+                refund_status: refundStatus,
+                razorpay_refund_id: refundIdToSave || null // 🔥 NAYA: Refund ID database me save kar di
             })
             .eq('id', order_id)
             .select();
-
+// ... baaki ka code ...
         if (updateError) throw updateError;
 
         res.json({ 
@@ -168,6 +169,53 @@ app.post('/order/cancel', async (req, res) => {
     } catch (error) {
         console.error("❌ Cancel Order Server Error:", error);
         res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// ==========================================
+// 🔍 CHECK REFUND LIVE STATUS API
+// ==========================================
+app.get('/order/refund-status/:order_id', async (req, res) => {
+    const { order_id } = req.params;
+
+    try {
+        // 1. Order aur Refund ID database se nikalo
+        const { data: order, error } = await supabase
+            .from('orders')
+            .select('razorpay_refund_id, refund_status')
+            .eq('id', order_id)
+            .single();
+
+        if (error || !order) {
+            return res.status(404).json({ status: 'error', message: 'Order nahi mila!' });
+        }
+
+        if (!order.razorpay_refund_id) {
+            return res.status(400).json({ status: 'error', message: 'Is order ka koi online refund ID nahi hai.' });
+        }
+
+        // 2. Razorpay se Live Status maango
+        const refundDetails = await razorpay.refunds.fetch(order.razorpay_refund_id);
+
+        // Razorpay ke statuses hote hain: 'pending', 'processed', 'failed'
+        let liveStatus = refundDetails.status; 
+
+        // 3. (Optional) Database mein status update kar do agar 'processed' ho gaya hai
+        if (liveStatus === 'processed' && order.refund_status !== 'Completed') {
+            await supabase.from('orders')
+                .update({ refund_status: 'Completed' })
+                .eq('id', order_id);
+        }
+
+        res.json({
+            status: 'success',
+            razorpay_status: liveStatus, // pending, processed, failed
+            message: `Refund status is currently: ${liveStatus}`
+        });
+
+    } catch (error) {
+        console.error("❌ Fetch Refund Status Error:", error);
+        res.status(500).json({ status: 'error', message: 'Refund status check karne me error aayi.' });
     }
 });
 
