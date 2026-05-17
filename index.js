@@ -98,6 +98,80 @@ app.post('/verify-payment', (req, res) => {
 });
 
 // ==========================================
+// 🛑 CANCEL ORDER & REFUND API 🛑
+// ==========================================
+
+app.post('/order/cancel', async (req, res) => {
+    const { order_id } = req.body; 
+
+    if (!order_id) {
+        return res.status(400).json({ status: 'error', message: 'Order ID missing hai!' });
+    }
+
+    try {
+        // 1. Pehle order ki details Database se nikalo
+        const { data: order, error: fetchError } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('id', order_id)
+            .single();
+
+        if (fetchError || !order) {
+            return res.status(404).json({ status: 'error', message: 'Order nahi mila!' });
+        }
+
+        // Agar order pehle se cancel ya deliver ho chuka hai, toh rok do
+        if (order.order_status === 'Cancelled' || order.order_status === 'Delivered') {
+            return res.status(400).json({ status: 'error', message: 'Ye order ab cancel nahi ho sakta.' });
+        }
+
+        let refundStatus = 'Not Applicable'; // Default for COD
+
+        // 2. 💸 RAZORPAY REFUND LOGIC (Sirf Online payments ke liye)
+        if (order.payment_mode === 'ONLINE' && order.payment_id && order.payment_id !== 'N/A') {
+            try {
+                console.log(`Initiating Razorpay refund for Payment ID: ${order.payment_id}`);
+                
+                // Razorpay ki Refund API call kar rahe hain
+                const refund = await razorpay.payments.refund(order.payment_id, {
+                    amount: order.grand_total * 100 // Razorpay paise (paisa) mein amount leta hai
+                });
+                
+                console.log("✅ Refund successful! Refund ID:", refund.id);
+                refundStatus = 'Initiated'; // Bank mein aane me 3-5 din lagte hain
+                
+            } catch (razorpayError) {
+                console.error("❌ Razorpay Refund Error:", razorpayError);
+                return res.status(500).json({ status: 'error', message: 'Payment refund fail ho gaya', error: razorpayError.message });
+            }
+        }
+
+        // 3. 📝 DATABASE UPDATE (Status aur Refund info)
+        const { data: updatedOrder, error: updateError } = await supabase
+            .from('orders')
+            .update({ 
+                order_status: 'Cancelled', 
+                refund_status: refundStatus 
+            })
+            .eq('id', order_id)
+            .select();
+
+        if (updateError) throw updateError;
+
+        res.json({ 
+            status: 'success', 
+            message: 'Order Cancel ho gaya!', 
+            refund_status: refundStatus,
+            data: updatedOrder 
+        });
+
+    } catch (error) {
+        console.error("❌ Cancel Order Server Error:", error);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// ==========================================
 // 🔥 RESTAURANT / PARTNER ROUTES 🔥
 // ==========================================
 
