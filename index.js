@@ -3,7 +3,6 @@ const cors = require('cors');
 const axios = require('axios');
 const https = require('https');
 const { createClient } = require('@supabase/supabase-js');
-const Razorpay = require('razorpay'); 
 const crypto = require('crypto');
 const cloudinary = require('cloudinary').v2;
 
@@ -28,11 +27,10 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 // ----------------------
 
-// --- RAZORPAY SETUP ---
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID, 
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+// --- CASHFREE SETUP ---
+const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID;
+const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY;
+const CASHFREE_URL = "https://api.cashfree.com/pg"; // LIVE Production URL
 // ----------------------
 
 // --- CLOUDINARY SETUP ---
@@ -45,74 +43,100 @@ cloudinary.config({
 
 // --- API KEYS & GLOBALS ---
 const TWO_FACTOR_API_KEY = "0b810632-34e1-11f1-bfb4-0200cd936042";
-const riderOtpStorage = new Map(); // Rider ke OTPs temporary save karne ke liye
+const riderOtpStorage = new Map();
 
 // Test Route
 app.get('/', (req, res) => {
-    res.send('KhaanaLeAao ka Backend, Supabase, Razorpay aur Cloudinary sab taiyaar hain! 🚀🍲💳🖼️');
+    res.send('KhaanaLeAao ka Backend, Supabase, Cashfree aur Cloudinary sab taiyaar hain! 🚀🍲💳🖼️');
 });
 
 // ==========================================
-// 🔥 PAYMENT GATEWAY ROUTES (RAZORPAY) 🔥
+// 🔥 PAYMENT GATEWAY ROUTES (CASHFREE) 🔥
 // ==========================================
 
+// 1. Create Cashfree Order Session for Android Drop-in SDK
 app.post('/create-payment', async (req, res) => {
     try {
-        const { amount } = req.body; 
+        const { amount, customer_id, customer_phone } = req.body; 
         
         if (!amount) {
             return res.status(400).json({ status: "error", message: "Amount is required" });
         }
 
-        const options = {
-            amount: Math.round(amount * 100), 
-            currency: "INR",
-            receipt: "receipt_" + Math.random().toString(36).substring(7),
+        const uniqueOrderId = "order_" + Date.now() + "_" + Math.random().toString(36).substring(7);
+
+        // Cashfree Order Body Layout
+        const orderData = {
+            order_amount: parseFloat(amount),
+            order_currency: "INR",
+            order_id: uniqueOrderId,
+            customer_details: {
+                customer_id: customer_id || "cust_" + Math.random().toString(36).substring(7),
+                customer_phone: customer_phone || "9999999999",
+                customer_name: "Khaana User"
+            },
+            order_meta: {
+                return_url: "https://khaanaleaao.onrender.com/payment-status?order_id={order_id}"
+            }
         };
 
-        const order = await razorpay.orders.create(options);
+        // Cashfree API hit karo Order create karne ke liye
+        const response = await axios.post(`${CASHFREE_URL}/orders`, orderData, {
+            headers: {
+                'x-client-id': CASHFREE_APP_ID,
+                'x-client-secret': CASHFREE_SECRET_KEY,
+                'x-api-version': '2023-08-01',
+                'Content-Type': 'application/json'
+            }
+        });
         
+        // Android App ko Session ID aur Order ID bhej do
         res.status(200).json({
             status: "success",
-            order_id: order.id,
-            amount: options.amount
+            order_id: response.data.order_id,
+            payment_session_id: response.data.payment_session_id,
+            amount: response.data.order_amount
         });
     } catch (error) {
-        console.error("❌ Razorpay Error:", error);
-        res.status(500).json({ status: "error", message: "Payment order fail ho gaya", error: error.message });
+        console.error("❌ Cashfree Create Order Error:", error.response ? error.response.data : error.message);
+        res.status(500).json({ status: "error", message: "Cashfree payment order fail ho gaya", error: error.message });
     }
 });
 
-app.post('/verify-payment', (req, res) => {
+// 2. Verify Cashfree Payment Status Securely from Backend
+app.post('/verify-payment', async (req, res) => {
     try {
-        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+        const { order_id } = req.body;
 
-        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-            return res.status(400).json({ status: "error", message: "Missing Razorpay details" });
+        if (!order_id) {
+            return res.status(400).json({ status: "error", message: "Missing order_id" });
         }
 
-        const sign = razorpay_order_id + "|" + razorpay_payment_id;
-        
-        const expectedSign = crypto
-            .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-            .update(sign.toString())
-            .digest("hex");
+        // Cashfree Server se Directly status poocho
+        const response = await axios.get(`${CASHFREE_URL}/orders/${order_id}`, {
+            headers: {
+                'x-client-id': CASHFREE_APP_ID,
+                'x-client-secret': CASHFREE_SECRET_KEY,
+                'x-api-version': '2023-08-01',
+                'Content-Type': 'application/json'
+            }
+        });
 
-        if (razorpay_signature === expectedSign) {
-            console.log("✅ Payment Verified! Payment ID:", razorpay_payment_id);
-            return res.status(200).json({ status: "success", message: "Payment verified successfully", payment_id: razorpay_payment_id });
+        if (response.data.order_status === 'PAID') {
+            console.log("✅ Cashfree Payment Verified! Order ID:", order_id);
+            return res.status(200).json({ status: "success", message: "Payment verified successfully", order_id: order_id });
         } else {
-            console.error("❌ Invalid Signature Detected!");
-            return res.status(400).json({ status: "error", message: "Invalid payment signature!" });
+            console.error("❌ Payment Not Paid! Status:", response.data.order_status);
+            return res.status(400).json({ status: "error", message: `Payment status is ${response.data.order_status}` });
         }
     } catch (error) {
-        console.error("❌ Verification Error:", error);
+        console.error("❌ Cashfree Verification Error:", error.response ? error.response.data : error.message);
         res.status(500).json({ status: "error", message: "Verification failed", error: error.message });
     }
 });
 
 // ==========================================
-// 🛑 CANCEL ORDER & REFUND API 🛑
+// 🛑 CANCEL ORDER & CASHFREE REFUND API 🛑
 // ==========================================
 
 app.post('/order/cancel', async (req, res) => {
@@ -142,15 +166,28 @@ app.post('/order/cancel', async (req, res) => {
 
         if (order.payment_mode === 'ONLINE' && order.payment_id && order.payment_id !== 'N/A') {
             try {
-                console.log(`Initiating Razorpay refund for Payment ID: ${order.payment_id}`);
-                const refund = await razorpay.payments.refund(order.payment_id, {
-                    amount: order.grand_total * 100 
+                console.log(`Initiating Cashfree refund for Order ID: ${order_id}`);
+                const uniqueRefundId = "ref_" + Date.now();
+
+                // Cashfree Refund API Request
+                const refundResponse = await axios.post(`${CASHFREE_URL}/orders/${order_id}/refunds`, {
+                    refund_amount: parseFloat(order.grand_total),
+                    refund_id: uniqueRefundId,
+                    refund_note: "Order cancelled by customer/server"
+                }, {
+                    headers: {
+                        'x-client-id': CASHFREE_APP_ID,
+                        'x-client-secret': CASHFREE_SECRET_KEY,
+                        'x-api-version': '2023-08-01',
+                        'Content-Type': 'application/json'
+                    }
                 });
-                console.log("✅ Refund successful! Refund ID:", refund.id);
+
+                console.log("✅ Cashfree Refund successful! Refund ID:", refundResponse.data.refund_id);
                 refundStatus = 'Initiated'; 
-                refundIdToSave = refund.id;
-            } catch (razorpayError) {
-                console.error("❌ Razorpay Refund Error:", razorpayError);
+                refundIdToSave = refundResponse.data.refund_id;
+            } catch (cashfreeError) {
+                console.error("❌ Cashfree Refund Error:", cashfreeError.response ? cashfreeError.response.data : cashfreeError.message);
             }
         }
 
@@ -159,11 +196,11 @@ app.post('/order/cancel', async (req, res) => {
             .update({ 
                 order_status: 'Cancelled', 
                 refund_status: refundStatus,
-                razorpay_refund_id: refundIdToSave || null 
+                razorpay_refund_id: refundIdToSave || null  // Purane column me hi data daal rhe hain taki schema na badalna pade
             })
             .eq('id', order_id)
             .select();
-            
+
         if (updateError) throw updateError;
 
         res.json({ 
@@ -179,7 +216,7 @@ app.post('/order/cancel', async (req, res) => {
 });
 
 // ==========================================
-// 🚀 🔥 LIVE TRACKING API (AUTO-REFUND CHECK KE SATH) 🔥 🚀
+// 🚀 🔥 LIVE TRACKING API (CASHFREE AUTO-REFUND CHECK) 🔥 🚀
 // ==========================================
 app.get('/order/track/:orderId', async (req, res) => {
     try {
@@ -197,15 +234,24 @@ app.get('/order/track/:orderId', async (req, res) => {
 
         if (orderData.order_status === 'Cancelled' && orderData.razorpay_refund_id && orderData.refund_status !== 'Completed') {
             try {
-                const refundDetails = await razorpay.refunds.fetch(orderData.razorpay_refund_id);
-                if (refundDetails.status === 'processed') {
+                // Cashfree se refund status fetch karo
+                const refundCheck = await axios.get(`${CASHFREE_URL}/orders/${orderId}/refunds/${orderData.razorpay_refund_id}`, {
+                    headers: {
+                        'x-client-id': CASHFREE_APP_ID,
+                        'x-client-secret': CASHFREE_SECRET_KEY,
+                        'x-api-version': '2023-08-01',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (refundCheck.data.refund_status === 'SUCCESS') {
                     await supabase.from('orders')
                         .update({ refund_status: 'Completed' })
                         .eq('id', orderId);
                     orderData.refund_status = 'Completed';
                 }
-            } catch (razorpayErr) {
-                console.error("Auto Refund Check Error:", razorpayErr.message);
+            } catch (cashfreeErr) {
+                console.error("Auto Cashfree Refund Check Error:", cashfreeErr.response ? cashfreeErr.response.data : cashfreeErr.message);
             }
         }
 
@@ -222,7 +268,6 @@ app.get('/order/track/:orderId', async (req, res) => {
                 .select('address, phone')
                 .eq('phone', orderData.restaurant_id) 
                 .maybeSingle();
-                
             if (restData) {
                 restAddress = restData.address;
                 restPhone = restData.phone;
@@ -240,7 +285,6 @@ app.get('/order/track/:orderId', async (req, res) => {
             receiver_name: orderData.receiver_name || "User Name", 
             receiver_phone: orderData.receiver_phone || "No Phone" 
         };
-        
         res.status(200).json({
             status: "success",
             data: liveData
@@ -299,7 +343,6 @@ app.post('/send-otp', async (req, res) => {
 
     try {
         console.log(`Sending OTP to ${phone} via 2Factor...`);
-        
         const url = `https://2factor.in/API/V1/${TWO_FACTOR_API_KEY}/SMS/${phone}/${otp}/OTP1`;
         const response = await axios.get(url);
 
@@ -326,7 +369,7 @@ app.post('/complete-registration', async (req, res) => {
             .single();
 
         if (existingUser) {
-            if (existingUser.status !== 'incomplete') {
+             if (existingUser.status !== 'incomplete') {
                  return res.status(400).json({ status: 'error', message: 'Ye mobile number pehle se registered hai!' });
             } else {
                 const { error: updateError } = await supabase
@@ -342,7 +385,6 @@ app.post('/complete-registration', async (req, res) => {
         const { error: insertError } = await supabase
             .from('restaurants')
             .insert([{ name, phone, password, status: 'incomplete' }]);
-            
         if (insertError) throw insertError;
         res.json({ status: 'success', message: 'Basic Account Created!' });
     } catch (error) {
@@ -558,7 +600,6 @@ app.get('/partner/menu/:phone', async (req, res) => {
                 addons: addons ? addons.filter(a => a.item_id === item.id) : []
             };
         });
-        
         res.json({ status: 'success', data: completeMenu });
 
     } catch (error) {
@@ -597,7 +638,7 @@ app.post('/add-menu-item', async (req, res) => {
             }])
             .select()
             .single();
-            
+
         if (itemError) throw itemError;
 
         const newDishId = menuItem.id;
@@ -759,7 +800,6 @@ app.post('/user/register', async (req, res) => {
     }
 });
 
-// 🔥 PROFILE UPDATE & PHOTO UPLOAD ROUTE
 app.post('/user/update-profile', async (req, res) => {
     const { current_phone, new_phone, full_name, email, image } = req.body;
 
@@ -920,7 +960,7 @@ app.post('/order/place', async (req, res) => {
             }])
             .select()
             .single();
-            
+
         if (error) throw error;
         res.json({ status: 'success', message: 'Order Confirmed!', order: data });
     } catch (error) {
@@ -1028,7 +1068,7 @@ app.post('/rider/login', async (req, res) => {
     
     // Testing ke liye master OTP "0000" rakh diya hai
     if (savedOtp !== otp && otp !== "0000") {
-        return res.status(400).json({ status: 'error', message: 'Galat OTP daala hai!' });
+         return res.status(400).json({ status: 'error', message: 'Galat OTP daala hai!' });
     }
 
     try {
@@ -1037,7 +1077,7 @@ app.post('/rider/login', async (req, res) => {
         if (!rider) {
             // Agar account nahi hai, toh Name aur Vehicle zaroori hai
             if (!name || !vehicle_number) {
-                return res.status(200).json({ 
+                 return res.status(200).json({ 
                     status: 'new_rider', 
                     message: 'Naya account hai. Name aur Vehicle number bharein.' 
                 });
@@ -1048,14 +1088,12 @@ app.post('/rider/login', async (req, res) => {
                 .from('riders')
                 .insert([{ mobile, name, vehicle_number, is_online: false }])
                 .select();
-
             if (insertError) throw insertError;
             rider = newRider[0];
         }
 
         // Login hone ke baad OTP hata do
         riderOtpStorage.delete(mobile);
-
         res.status(200).json({
             status: 'success',
             message: 'Login Successful!',
@@ -1117,5 +1155,5 @@ app.post('/rider/update-location', async (req, res) => {
 // ==========================================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`✅ Server port ${PORT} par daud raha hai 🍲`);
+  console.log(`✅ Server port ${PORT} par daud raha hai Cashfree ke sath 🍲`);
 });
