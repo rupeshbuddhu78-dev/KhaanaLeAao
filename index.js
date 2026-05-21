@@ -85,7 +85,7 @@ app.post('/create-payment', async (req, res) => {
             headers: {
                 'x-client-id': CASHFREE_APP_ID,
                 'x-client-secret': CASHFREE_SECRET_KEY,
-                'x-api-version': '2023-08-01',
+                'x-api-version': '2025-01-01',
                 'Content-Type': 'application/json'
             }
         });
@@ -117,7 +117,7 @@ app.post('/verify-payment', async (req, res) => {
             headers: {
                 'x-client-id': CASHFREE_APP_ID,
                 'x-client-secret': CASHFREE_SECRET_KEY,
-                'x-api-version': '2023-08-01',
+                'x-api-version': '2025-01-01',
                 'Content-Type': 'application/json'
             }
         });
@@ -178,7 +178,7 @@ app.post('/order/cancel', async (req, res) => {
                     headers: {
                         'x-client-id': CASHFREE_APP_ID,
                         'x-client-secret': CASHFREE_SECRET_KEY,
-                        'x-api-version': '2023-08-01',
+                        'x-api-version': '2025-01-01',
                         'Content-Type': 'application/json'
                     }
                 });
@@ -239,7 +239,7 @@ app.get('/order/track/:orderId', async (req, res) => {
                     headers: {
                         'x-client-id': CASHFREE_APP_ID,
                         'x-client-secret': CASHFREE_SECRET_KEY,
-                        'x-api-version': '2023-08-01',
+                        'x-api-version': '2025-01-01',
                         'Content-Type': 'application/json'
                     }
                 });
