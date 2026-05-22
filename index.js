@@ -30,8 +30,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // --- CASHFREE SETUP ---
 const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID;
 const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY;
-// 🔥 Agar LIVE chalana hai toh isko "https://api.cashfree.com/pg" kar dena 
-const CASHFREE_URL = "https://api.cashfree.com/pg";  // Ye Live API ka URL hai
+// 🔥 Live API ka URL (Agar sandbox chalana ho toh "https://sandbox.cashfree.com/pg" kar dena)
+const CASHFREE_URL = "https://api.cashfree.com/pg"; 
 // ----------------------
 
 // --- CLOUDINARY SETUP ---
@@ -92,20 +92,15 @@ app.post('/create-payment', async (req, res) => {
             }
         });
 
-        const paymentSessionId = response.data.payment_session_id;
-
-        // 🔥 NAYA CODE: Web Checkout ka Direct URL banana (Sandbox vs Live bypass hack)
-        const isSandbox = CASHFREE_URL.includes("sandbox");
-        const checkoutUrl = isSandbox 
-            ? `https://payments-test.cashfree.com/order/#${paymentSessionId}` 
-            : `https://payments.cashfree.com/order/#${paymentSessionId}`;
+        // 🔥 NAYA CODE: Cashfree khud batata hai ki kaun sa official link kholna hai (Error Khatam!)
+        const checkoutUrl = response.data.payment_link;
 
         // Android App ko Session ID, Order ID aur Naya Checkout URL bhej do
         res.status(200).json({
             status: "success",
             order_id: response.data.order_id,
-            payment_session_id: paymentSessionId,
-            payment_url: checkoutUrl, // 🔥 Ye App seedhe browser mein khol degi
+            payment_session_id: response.data.payment_session_id,
+            payment_url: checkoutUrl, // 🔥 Cashfree ka bheja hua official link
             amount: response.data.order_amount
         });
 
