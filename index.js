@@ -1,1148 +1,1165 @@
-const express = require('express');
-const cors = require('cors');
-const axios = require('axios');
-const https = require('https');
-const { createClient } = require('@supabase/supabase-js');
-const crypto = require('crypto');
-const cloudinary = require('cloudinary').v2;
+const express = require('express'); [cite: 1]
+const cors = require('cors'); [cite: 1]
+const axios = require('axios'); [cite: 1]
+const https = require('https'); [cite: 1]
+const { createClient } = require('@supabase/supabase-js'); [cite: 2]
+const crypto = require('crypto'); [cite: 2]
+const cloudinary = require('cloudinary').v2; [cite: 2]
 
-require('dotenv').config();
+require('dotenv').config(); [cite: 2]
 
-const app = express();
-
-// Middleware (Image upload ke liye limit badha kar 10mb kar di hai)
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
-app.use(express.static('public'));
+const app = express(); [cite: 2]
+// Middleware (Image upload ke liye limit badha kar 10mb kar di hai) [cite: 3]
+app.use(cors()); [cite: 3]
+app.use(express.json({ limit: '10mb' })); [cite: 3]
+app.use(express.urlencoded({ limit: '10mb', extended: true })); [cite: 4]
+app.use(express.static('public')); [cite: 4]
 
 // --- SUPABASE SETUP ---
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
+const supabaseUrl = process.env.SUPABASE_URL; [cite: 4]
+const supabaseKey = process.env.SUPABASE_KEY; [cite: 4]
+if (!supabaseUrl || !supabaseKey) { [cite: 5]
+    console.error("❌ ERROR: .env file mein Supabase URL ya Key missing hai!"); [cite: 5]
+} [cite: 6]
 
-if (!supabaseUrl || !supabaseKey) {
-    console.error("❌ ERROR: .env file mein Supabase URL ya Key missing hai!");
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseKey); [cite: 6]
 // ----------------------
 
 // --- CASHFREE SETUP ---
-const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID;
-const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY;
-// 🔥 Live API ka URL (Real payments ke liye)
+const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID; [cite: 6]
+const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY; [cite: 6]
+// 🔥 LIVE Production URL (Sandbox Hata Diya Gaya Hai)
 const CASHFREE_URL = "https://api.cashfree.com/pg"; 
 // ----------------------
 
 // --- CLOUDINARY SETUP ---
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-});
-// ----------------------
+cloudinary.config({ [cite: 7]
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME, [cite: 7]
+    api_key: process.env.CLOUDINARY_API_KEY, [cite: 7]
+    api_secret: process.env.CLOUDINARY_API_SECRET [cite: 7]
+}); [cite: 7]
+// ---------------------- [cite: 8]
 
 // --- API KEYS & GLOBALS ---
-const TWO_FACTOR_API_KEY = "0b810632-34e1-11f1-bfb4-0200cd936042";
-const riderOtpStorage = new Map();
+const TWO_FACTOR_API_KEY = "0b810632-34e1-11f1-bfb4-0200cd936042"; [cite: 8]
+const riderOtpStorage = new Map(); [cite: 8]
+// Test Route [cite: 9]
+app.get('/', (req, res) => { [cite: 9]
+    res.send('KhaanaLeAao ka Backend, Supabase, Cashfree aur Cloudinary sab taiyaar hain! 🚀🍲💳🖼️'); [cite: 9]
+}); [cite: 9]
+// ========================================== [cite: 10]
+// 🔥 PAYMENT GATEWAY ROUTES (CASHFREE) 🔥 [cite: 10]
+// ========================================== [cite: 10]
 
-// Test Route
-app.get('/', (req, res) => {
-    res.send('KhaanaLeAao ka Backend, Supabase, Cashfree aur Cloudinary sab taiyaar hain! 🚀🍲💳🖼️');
-});
-
-// ==========================================
-// 🔥 PAYMENT GATEWAY ROUTES (CASHFREE) 🔥
-// ==========================================
-
-// 1. Create Cashfree Order Session and WEB CHECKOUT URL
-app.post('/create-payment', async (req, res) => {
-    try {
-        const { amount, customer_id, customer_phone } = req.body; 
+// 1. Create Cashfree Order Session 
+app.post('/create-payment', async (req, res) => { [cite: 10]
+    try { [cite: 10]
+        const { amount, customer_id, customer_phone } = req.body;  [cite: 10]
         
-        if (!amount) {
-            return res.status(400).json({ status: "error", message: "Amount is required" });
-        }
+        if (!amount) { [cite: 10]
+            return res.status(400).json({ status: "error", message: "Amount is required" }); [cite: 10]
+        } [cite: 10]
 
-        const uniqueOrderId = "order_" + Date.now() + "_" + Math.random().toString(36).substring(7);
+        const uniqueOrderId = "order_" + Date.now() + "_" + Math.random().toString(36).substring(7); [cite: 11]
 
-        // Cashfree Order Body Layout
-        const orderData = {
-            order_amount: parseFloat(amount),
-            order_currency: "INR",
-            order_id: uniqueOrderId,
-            customer_details: {
-                customer_id: customer_id || "cust_" + Math.random().toString(36).substring(7),
-                customer_phone: customer_phone || "9999999999",
-                customer_name: "Khaana User"
-            },
-            order_meta: {
-                // Payment ke baad user is URL par jayega
-                return_url: "https://khaanaleaao.onrender.com/payment-status?order_id={order_id}"
-            }
-        };
+        // Cashfree Order Body Layout [cite: 11]
+        const orderData = { [cite: 11]
+            order_amount: parseFloat(amount), [cite: 11]
+            order_currency: "INR", [cite: 11]
+            order_id: uniqueOrderId, [cite: 11]
+            customer_details: { [cite: 11]
+                customer_id: customer_id || "cust_" + Math.random().toString(36).substring(7), [cite: 12]
+                customer_phone: customer_phone || "9999999999", [cite: 12]
+                customer_name: "Khaana User" [cite: 12]
+            }, [cite: 12]
+            order_meta: { [cite: 12]
+                return_url: "https://khaanaleaao.onrender.com/payment-status?order_id={order_id}" [cite: 12]
+            } [cite: 12]
+        }; [cite: 13]
 
-        // Cashfree API hit karo Order create karne ke liye
-        const response = await axios.post(`${CASHFREE_URL}/orders`, orderData, {
-            headers: {
-                'x-client-id': CASHFREE_APP_ID,
-                'x-client-secret': CASHFREE_SECRET_KEY,
-                'x-api-version': '2023-08-01',
-                'Content-Type': 'application/json'
-            }
-        });
+        // Cashfree API hit karo Order create karne ke liye [cite: 13]
+        const response = await axios.post(`${CASHFREE_URL}/orders`, orderData, { [cite: 13]
+            headers: { [cite: 13]
+                'x-client-id': CASHFREE_APP_ID, [cite: 13]
+                'x-client-secret': CASHFREE_SECRET_KEY, [cite: 13]
+                'x-api-version': '2025-01-01', [cite: 13]
+                'Content-Type': 'application/json' [cite: 14]
+            } [cite: 14]
+        }); [cite: 14]
 
-        // 🔥 ERROR FIXED YAHAN HAI: Naya tarika URL nikalne ka
-        const paymentSessionId = response.data.payment_session_id;
+        // Android App ko Session ID, Order ID aur apna naya Browser URL bhej do
+        res.status(200).json({ [cite: 15]
+            status: "success", [cite: 15]
+            order_id: response.data.order_id, [cite: 15]
+            payment_session_id: response.data.payment_session_id, [cite: 15]
+            amount: response.data.order_amount, [cite: 15]
+            payment_url: `https://khaanaleaao.onrender.com/pay?session_id=${response.data.payment_session_id}`
+        }); [cite: 15]
+    } catch (error) { [cite: 16]
+        console.error("❌ Cashfree Create Order Error:", error.response ? error.response.data : error.message); [cite: 16]
+        res.status(500).json({ status: "error", message: "Cashfree payment order fail ho gaya", error: error.message }); [cite: 17]
+    } [cite: 17]
+}); [cite: 17]
 
-        // Live vs Sandbox ke hisab se direct URL banana
-        const isSandbox = CASHFREE_URL.includes("sandbox");
-        const checkoutUrl = isSandbox 
-            ? `https://payments-test.cashfree.com/order/#${paymentSessionId}` 
-            : `https://payments.cashfree.com/order/#${paymentSessionId}`;
+// 🔥 1.1 NAYA ROUTE: Browser me payment page dikhane ke liye (LIVE MODE)
+app.get('/pay', (req, res) => {
+    const sessionId = req.query.session_id;
+    if (!sessionId) return res.send("Session ID missing!");
 
-        // Android App ko Session ID, Order ID aur Naya Checkout URL bhej do
-        res.status(200).json({
-            status: "success",
-            order_id: response.data.order_id,
-            payment_session_id: paymentSessionId,
-            payment_url: checkoutUrl, // 🔥 Ye sahi chalega
-            amount: response.data.order_amount
-        });
-
-    } catch (error) {
-        console.error("❌ Cashfree Create Order Error:", error.response ? error.response.data : error.message);
-        res.status(500).json({ status: "error", message: "Cashfree payment order fail ho gaya", error: error.message });
-    }
+    // Cashfree JS SDK ka use karke auto-redirect page (LIVE mode)
+    const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Processing Payment...</title>
+        <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+    </head>
+    <body style="text-align:center; padding-top: 50px; font-family: Arial, sans-serif;">
+        <h2>Redirecting to Secure Payment...</h2>
+        <script>
+            // 🔥 Live/Production mode enabled
+            const cashfree = Cashfree({
+                mode: "production" 
+            });
+            cashfree.checkout({
+                paymentSessionId: "${sessionId}"
+            });
+        </script>
+    </body>
+    </html>
+    `;
+    res.send(html);
 });
 
-// 🔥 NAYA ROUTE: Browser mein success screen dikhane ke liye
+// 🔥 1.2 NAYA ROUTE: Payment ke baad return url ke liye
 app.get('/payment-status', (req, res) => {
-    const orderId = req.query.order_id;
+    const order_id = req.query.order_id;
     res.send(`
-        <html>
-        <head><meta name="viewport" content="width=device-width, initial-scale=1"></head>
-        <body style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
-            <h1 style="color: #4CAF50;">✅ Payment Processed!</h1>
-            <p style="font-size: 18px;">Order ID: <b>${orderId || 'Unknown'}</b></p>
-            <p style="color: #666;">Aapki payment bank ke paas process ho gayi hai.</p>
-            <div style="margin-top: 30px; padding: 15px; background: #ffebee; border-radius: 8px;">
-                <h3 style="color: #d32f2f;">Ab is browser window ko band karke <br>KhaanaLeAao App par wapas chale jayein! 🍕</h3>
-            </div>
-        </body>
-        </html>
+    <div style="text-align:center; padding-top: 100px; font-family: Arial, sans-serif;">
+        <h1 style="color: #4CAF50; font-size: 50px;">✓</h1>
+        <h1 style="color: #333;">Payment Processed!</h1>
+        <p style="color: #666; font-size: 18px;">Order ID: ${order_id}</p>
+        <h3 style="margin-top: 30px; color: #555;">Please close this browser and go back to the Khaana Le Aao App.</h3>
+    </div>
     `);
 });
 
-// 2. Verify Cashfree Payment Status Securely from Backend
-app.post('/verify-payment', async (req, res) => {
-    try {
-        const { order_id } = req.body;
+// 2. Verify Cashfree Payment Status Securely from Backend [cite: 18]
+app.post('/verify-payment', async (req, res) => { [cite: 18]
+    try { [cite: 18]
+        const { order_id } = req.body; [cite: 18]
 
-        if (!order_id) {
-            return res.status(400).json({ status: "error", message: "Missing order_id" });
-        }
+        if (!order_id) { [cite: 18]
+            return res.status(400).json({ status: "error", message: "Missing order_id" }); [cite: 18]
+        } [cite: 18]
 
-        // Cashfree Server se Directly status poocho
-        const response = await axios.get(`${CASHFREE_URL}/orders/${order_id}`, {
-            headers: {
-                'x-client-id': CASHFREE_APP_ID,
-                'x-client-secret': CASHFREE_SECRET_KEY,
-                'x-api-version': '2023-08-01',
-                'Content-Type': 'application/json'
-            }
-        });
+        // Cashfree Server se Directly status poocho [cite: 18]
+        const response = await axios.get(`${CASHFREE_URL}/orders/${order_id}`, { [cite: 18]
+            headers: { [cite: 19]
+                'x-client-id': CASHFREE_APP_ID, [cite: 19]
+                'x-client-secret': CASHFREE_SECRET_KEY, [cite: 19]
+                'x-api-version': '2025-01-01', [cite: 19]
+                'Content-Type': 'application/json' [cite: 19]
+            } [cite: 19]
+        }); [cite: 19]
 
-        if (response.data.order_status === 'PAID') {
-            console.log("✅ Cashfree Payment Verified! Order ID:", order_id);
-            return res.status(200).json({ status: "success", message: "Payment verified successfully", order_id: order_id });
-        } else {
-            console.error("❌ Payment Not Paid! Status:", response.data.order_status);
-            return res.status(400).json({ status: "error", message: `Payment status is ${response.data.order_status}` });
-        }
-    } catch (error) {
-        console.error("❌ Cashfree Verification Error:", error.response ? error.response.data : error.message);
-        res.status(500).json({ status: "error", message: "Verification failed", error: error.message });
-    }
-});
+        if (response.data.order_status === 'PAID') { [cite: 20]
+            console.log("✅ Cashfree Payment Verified! Order ID:", order_id); [cite: 20]
+            return res.status(200).json({ status: "success", message: "Payment verified successfully", order_id: order_id }); [cite: 20]
+        } else { [cite: 20]
+            console.error("❌ Payment Not Paid! Status:", response.data.order_status); [cite: 21]
+            return res.status(400).json({ status: "error", message: `Payment status is ${response.data.order_status}` }); [cite: 21]
+        } [cite: 21]
+    } catch (error) { [cite: 21]
+        console.error("❌ Cashfree Verification Error:", error.response ? error.response.data : error.message); [cite: 21]
+        res.status(500).json({ status: "error", message: "Verification failed", error: error.message }); [cite: 21]
+    } [cite: 21]
+}); [cite: 21]
 
-// ==========================================
-// 🛑 CANCEL ORDER & CASHFREE REFUND API 🛑
-// ==========================================
+// ========================================== [cite: 21]
+// 🛑 CANCEL ORDER & CASHFREE REFUND API 🛑 [cite: 21]
+// ========================================== [cite: 21]
 
-app.post('/order/cancel', async (req, res) => {
-    const { order_id } = req.body; 
+app.post('/order/cancel', async (req, res) => { [cite: 21]
+    const { order_id } = req.body;  [cite: 21]
 
-    if (!order_id) {
-        return res.status(400).json({ status: 'error', message: 'Order ID missing hai!' });
-    }
+    if (!order_id) { [cite: 22]
+        return res.status(400).json({ status: 'error', message: 'Order ID missing hai!' }); [cite: 22]
+    } [cite: 22]
 
-    try {
-        const { data: order, error: fetchError } = await supabase
-            .from('orders')
-            .select('*')
-            .eq('id', order_id)
-            .single();
+    try { [cite: 22]
+        const { data: order, error: fetchError } = await supabase [cite: 22]
+            .from('orders') [cite: 22]
+            .select('*') [cite: 22]
+            .eq('id', order_id) [cite: 22]
+            .single(); [cite: 22]
 
-        if (fetchError || !order) {
-            return res.status(404).json({ status: 'error', message: 'Order nahi mila!' });
-        }
+        if (fetchError || !order) { [cite: 23]
+            return res.status(404).json({ status: 'error', message: 'Order nahi mila!' }); [cite: 23]
+        } [cite: 24]
 
-        if (order.order_status === 'Cancelled' || order.order_status === 'Delivered') {
-            return res.status(400).json({ status: 'error', message: 'Ye order ab cancel nahi ho sakta.' });
-        }
+        if (order.order_status === 'Cancelled' || order.order_status === 'Delivered') { [cite: 24]
+            return res.status(400).json({ status: 'error', message: 'Ye order ab cancel nahi ho sakta.' }); [cite: 24]
+        } [cite: 25]
 
-        let refundStatus = 'Not Applicable';
-        let refundIdToSave = null;
+        let refundStatus = 'Not Applicable'; [cite: 25]
+        let refundIdToSave = null; [cite: 25]
+        if (order.payment_mode === 'ONLINE' && order.payment_id && order.payment_id !== 'N/A') { [cite: 26]
+            try { [cite: 26]
+                console.log(`Initiating Cashfree refund for Order ID: ${order_id}`); [cite: 26]
+                const uniqueRefundId = "ref_" + Date.now(); [cite: 27]
 
-        if (order.payment_mode === 'ONLINE' && order.payment_id && order.payment_id !== 'N/A') {
-            try {
-                console.log(`Initiating Cashfree refund for Order ID: ${order_id}`);
-                const uniqueRefundId = "ref_" + Date.now();
+                // Cashfree Refund API Request [cite: 27]
+                const refundResponse = await axios.post(`${CASHFREE_URL}/orders/${order_id}/refunds`, { [cite: 27]
+                    refund_amount: parseFloat(order.grand_total), [cite: 27]
+                    refund_id: uniqueRefundId, [cite: 27]
+                    refund_note: "Order cancelled by customer/server" [cite: 27]
+                }, { [cite: 28]
+                    headers: { [cite: 28]
+                        'x-client-id': CASHFREE_APP_ID, [cite: 28]
+                        'x-client-secret': CASHFREE_SECRET_KEY, [cite: 28]
+                        'x-api-version': '2025-01-01', [cite: 29]
+                        'Content-Type': 'application/json' [cite: 29]
+                    } [cite: 29]
+                }); [cite: 29]
+                console.log("✅ Cashfree Refund successful! Refund ID:", refundResponse.data.refund_id); [cite: 30]
+                refundStatus = 'Initiated';  [cite: 30]
+                refundIdToSave = refundResponse.data.refund_id; [cite: 30]
+            } catch (cashfreeError) { [cite: 31]
+                console.error("❌ Cashfree Refund Error:", cashfreeError.response ? cashfreeError.response.data : cashfreeError.message); [cite: 31]
+            } [cite: 32]
+        } [cite: 32]
 
-                // Cashfree Refund API Request
-                const refundResponse = await axios.post(`${CASHFREE_URL}/orders/${order_id}/refunds`, {
-                    refund_amount: parseFloat(order.grand_total),
-                    refund_id: uniqueRefundId,
-                    refund_note: "Order cancelled by customer/server"
-                }, {
-                    headers: {
-                        'x-client-id': CASHFREE_APP_ID,
-                        'x-client-secret': CASHFREE_SECRET_KEY,
-                        'x-api-version': '2023-08-01',
-                        'Content-Type': 'application/json'
-                    }
-                });
+        const { data: updatedOrder, error: updateError } = await supabase [cite: 32]
+            .from('orders') [cite: 32]
+            .update({  [cite: 32]
+                order_status: 'Cancelled',  [cite: 32]
+                refund_status: refundStatus, [cite: 32]
+                razorpay_refund_id: refundIdToSave || null  // Purane column me hi data daal rhe hain taki schema na badalna pade [cite: 33]
+            }) [cite: 33]
+            .eq('id', order_id) [cite: 33]
+            .select(); [cite: 33]
+        if (updateError) throw updateError; [cite: 34]
 
-                console.log("✅ Cashfree Refund successful! Refund ID:", refundResponse.data.refund_id);
-                refundStatus = 'Initiated'; 
-                refundIdToSave = refundResponse.data.refund_id;
-            } catch (cashfreeError) {
-                console.error("❌ Cashfree Refund Error:", cashfreeError.response ? cashfreeError.response.data : cashfreeError.message);
-            }
-        }
+        res.json({  [cite: 34]
+            status: 'success',  [cite: 34]
+            message: 'Order Cancel ho gaya!',  [cite: 34]
+            refund_status: refundStatus, [cite: 34]
+            data: updatedOrder  [cite: 34]
+        }); [cite: 34]
+    } catch (error) { [cite: 35]
+        console.error("❌ Cancel Order Server Error:", error); [cite: 35]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 36]
+    } [cite: 36]
+}); [cite: 36]
 
-        const { data: updatedOrder, error: updateError } = await supabase
-            .from('orders')
-            .update({ 
-                order_status: 'Cancelled', 
-                refund_status: refundStatus,
-                razorpay_refund_id: refundIdToSave || null  // Purane column me hi data daal rhe hain taki schema na badalna pade
-            })
-            .eq('id', order_id)
-            .select();
+// ========================================== [cite: 36]
+// 🚀 🔥 LIVE TRACKING API (CASHFREE AUTO-REFUND CHECK) 🔥 🚀 [cite: 36]
+// ========================================== [cite: 36]
+app.get('/order/track/:orderId', async (req, res) => { [cite: 36]
+    try { [cite: 36]
+        const orderId = req.params.orderId; [cite: 36]
 
-        if (updateError) throw updateError;
+        const { data: orderData, error: orderError } = await supabase [cite: 36]
+            .from('orders') [cite: 36]
+            .select('*') [cite: 36]
+            .eq('id', orderId) [cite: 36]
+            .single(); [cite: 37]
 
-        res.json({ 
-            status: 'success', 
-            message: 'Order Cancel ho gaya!', 
-            refund_status: refundStatus,
-            data: updatedOrder 
-        });
+        if (orderError || !orderData) { [cite: 37]
+            return res.status(404).json({ status: 'error', message: 'Order nahi mila!' }); [cite: 37]
+        } [cite: 37]
 
-    } catch (error) {
-        console.error("❌ Cancel Order Server Error:", error);
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
+        if (orderData.order_status === 'Cancelled' && orderData.razorpay_refund_id && orderData.refund_status !== 'Completed') { [cite: 37]
+            try { [cite: 37]
+                // Cashfree se refund status fetch karo [cite: 37]
+                const refundCheck = await axios.get(`${CASHFREE_URL}/orders/${orderId}/refunds/${orderData.razorpay_refund_id}`, { [cite: 38]
+                    headers: { [cite: 38]
+                        'x-client-id': CASHFREE_APP_ID, [cite: 38]
+                        'x-client-secret': CASHFREE_SECRET_KEY, [cite: 38]
+                        'x-api-version': '2025-01-01', [cite: 39]
+                        'Content-Type': 'application/json' [cite: 39]
+                    } [cite: 39]
+                }); [cite: 39]
+                if (refundCheck.data.refund_status === 'SUCCESS') { [cite: 40]
+                    await supabase.from('orders') [cite: 40]
+                        .update({ refund_status: 'Completed' }) [cite: 40]
+                        .eq('id', orderId); [cite: 40]
+                    orderData.refund_status = 'Completed'; [cite: 41]
+                } [cite: 41]
+            } catch (cashfreeErr) { [cite: 41]
+                console.error("Auto Cashfree Refund Check Error:", cashfreeErr.response ? cashfreeErr.response.data : cashfreeErr.message); [cite: 41]
+            } [cite: 42]
+        } [cite: 42]
 
-// ==========================================
-// 🚀 🔥 LIVE TRACKING API (CASHFREE AUTO-REFUND CHECK) 🔥 🚀
-// ==========================================
-app.get('/order/track/:orderId', async (req, res) => {
-    try {
-        const orderId = req.params.orderId;
+        let itemsSummary = "View Items"; [cite: 42]
+        if (orderData.order_items && Array.isArray(orderData.order_items)) { [cite: 43]
+            itemsSummary = orderData.order_items.map(item => `${item.qty} x ${item.name}`).join(', '); [cite: 43]
+        } [cite: 44]
 
-        const { data: orderData, error: orderError } = await supabase
-            .from('orders')
-            .select('*')
-            .eq('id', orderId)
-            .single();
+        let restAddress = "Address not found"; [cite: 44]
+        let restPhone = ""; [cite: 44]
+        if (orderData.restaurant_id) { [cite: 45]
+            const { data: restData } = await supabase [cite: 45]
+                .from('restaurants') [cite: 45]
+                .select('address, phone') [cite: 45]
+                .eq('phone', orderData.restaurant_id)  [cite: 45]
+                .maybeSingle(); [cite: 45]
+            if (restData) { [cite: 46]
+                restAddress = restData.address; [cite: 46]
+                restPhone = restData.phone; [cite: 47]
+            } [cite: 47]
+        } [cite: 47]
 
-        if (orderError || !orderData) {
-            return res.status(404).json({ status: 'error', message: 'Order nahi mila!' });
-        }
+        const liveData = { [cite: 47]
+            order_status: orderData.order_status || "Pending", [cite: 48]
+            refund_status: orderData.refund_status || "Not Applicable", [cite: 49]
+            delivery_address: orderData.delivery_address || "Address not provided", [cite: 50]
+            restaurant_name: orderData.restaurant_name || "Restaurant", [cite: 51]
+            restaurant_address: restAddress,  [cite: 51]
+            restaurant_phone: restPhone,      [cite: 51]
+            items_summary: itemsSummary, [cite: 51]
+            receiver_name: orderData.receiver_name || "User Name", [cite: 52]
+            receiver_phone: orderData.receiver_phone || "No Phone" [cite: 53]
+        }; [cite: 53]
+        res.status(200).json({ [cite: 54]
+            status: "success", [cite: 54]
+            data: liveData [cite: 54]
+        }); [cite: 54]
+    } catch (error) { [cite: 55]
+        console.error("❌ Track Order Error:", error); [cite: 55]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 56]
+    } [cite: 56]
+}); [cite: 56]
 
-        if (orderData.order_status === 'Cancelled' && orderData.razorpay_refund_id && orderData.refund_status !== 'Completed') {
-            try {
-                // Cashfree se refund status fetch karo
-                const refundCheck = await axios.get(`${CASHFREE_URL}/orders/${orderId}/refunds/${orderData.razorpay_refund_id}`, {
-                    headers: {
-                        'x-client-id': CASHFREE_APP_ID,
-                        'x-client-secret': CASHFREE_SECRET_KEY,
-                        'x-api-version': '2023-08-01',
-                        'Content-Type': 'application/json'
-                    }
-                });
+// ========================================== [cite: 56]
+// 🔥 CUSTOMER RATING & REVIEW API 🔥 [cite: 56]
+// ========================================== [cite: 56]
+app.post('/customer/rate-order', async (req, res) => { [cite: 56]
+    const { order_id, rating, review_text } = req.body; [cite: 56]
 
-                if (refundCheck.data.refund_status === 'SUCCESS') {
-                    await supabase.from('orders')
-                        .update({ refund_status: 'Completed' })
-                        .eq('id', orderId);
+    if (!order_id || rating === undefined) { [cite: 56]
+        return res.status(400).json({ status: 'error', message: 'Order ID aur Rating dono zaroori hain!' }); [cite: 56]
+    } [cite: 56]
 
-                    orderData.refund_status = 'Completed';
-                }
-            } catch (cashfreeErr) {
-                console.error("Auto Cashfree Refund Check Error:", cashfreeErr.response ? cashfreeErr.response.data : cashfreeErr.message);
-            }
-        }
+    try { [cite: 56]
+        const { data, error } = await supabase [cite: 56]
+            .from('reviews')  [cite: 56]
+            .insert([{  [cite: 57]
+                order_id: order_id,  [cite: 57]
+                rating: parseInt(rating, 10),  [cite: 57]
+                review_text: review_text || null  [cite: 57]
+            }]) [cite: 57]
+            .select(); [cite: 57]
 
-        let itemsSummary = "View Items";
-        if (orderData.order_items && Array.isArray(orderData.order_items)) {
-            itemsSummary = orderData.order_items.map(item => `${item.qty} x ${item.name}`).join(', ');
-        }
+        if (error) throw error; [cite: 58]
 
-        let restAddress = "Address not found";
-        let restPhone = "";
+        res.status(200).json({  [cite: 58]
+            status: 'success',  [cite: 58]
+            message: 'Review submit karne ke liye dhanyawad! ❤️', [cite: 58]
+            data: data[0] [cite: 58]
+        }); [cite: 58]
+    } catch (error) { [cite: 58]
+        console.error("❌ Rate Order Server Error:", error.message); [cite: 58]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 59]
+    } [cite: 59]
+}); [cite: 59]
 
-        if (orderData.restaurant_id) {
-            const { data: restData } = await supabase
-                .from('restaurants')
-                .select('address, phone')
-                .eq('phone', orderData.restaurant_id) 
-                .maybeSingle();
+// ========================================== [cite: 59]
+// 🔥 RESTAURANT / PARTNER ROUTES 🔥 [cite: 59]
+// ========================================== [cite: 59]
 
-            if (restData) {
-                restAddress = restData.address;
-                restPhone = restData.phone;
-            }
-        }
+app.post('/send-otp', async (req, res) => { [cite: 59]
+    const { phone } = req.body; [cite: 59]
 
-        const liveData = {
-            order_status: orderData.order_status || "Pending",
-            refund_status: orderData.refund_status || "Not Applicable",
-            delivery_address: orderData.delivery_address || "Address not provided",
-            restaurant_name: orderData.restaurant_name || "Restaurant",
-            restaurant_address: restAddress, 
-            restaurant_phone: restPhone,     
-            items_summary: itemsSummary,
-            receiver_name: orderData.receiver_name || "User Name", 
-            receiver_phone: orderData.receiver_phone || "No Phone" 
-        };
+    if (!phone || phone.length !== 10) { [cite: 59]
+        return res.status(400).json({ status: 'error', message: 'Kripya sahi 10-digit number dalein' }); [cite: 59]
+    } [cite: 59]
 
-        res.status(200).json({
-            status: "success",
-            data: liveData
-        });
+    const otp = Math.floor(100000 + Math.random() * 900000).toString(); [cite: 59]
 
-    } catch (error) {
-        console.error("❌ Track Order Error:", error);
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
+    try { [cite: 59]
+        console.log(`Sending OTP to ${phone} via 2Factor...`); [cite: 59]
+        const url = `https://2factor.in/API/V1/${TWO_FACTOR_API_KEY}/SMS/${phone}/${otp}/OTP1`; [cite: 60]
+        const response = await axios.get(url); [cite: 60]
 
-// ==========================================
-// 🔥 CUSTOMER RATING & REVIEW API 🔥
-// ==========================================
-app.post('/customer/rate-order', async (req, res) => {
-    const { order_id, rating, review_text } = req.body;
+        if (response.data.Status === 'Success') { [cite: 60]
+            console.log(`✅ Success: OTP ${otp} sent to ${phone}`); [cite: 60]
+            return res.json({ status: 'success', message: 'OTP bhej diya gaya hai', otp: otp }); [cite: 60]
+        } else { [cite: 60]
+            console.error("❌ 2Factor Gateway Error:", response.data); [cite: 60]
+            return res.status(500).json({ status: 'error', message: 'SMS Gateway issue' }); [cite: 61]
+        } [cite: 62]
+    } catch (error) { [cite: 62]
+        console.error("❌ Server ka Error:", error.message); [cite: 62]
+        return res.status(500).json({ status: 'error', message: 'Backend crash ho gaya.' }); [cite: 63]
+    } [cite: 63]
+}); [cite: 63]
+app.post('/complete-registration', async (req, res) => { [cite: 64]
+    const { name, phone, password } = req.body; [cite: 64]
+    try { [cite: 64]
+        const { data: existingUser, error: fetchError } = await supabase [cite: 64]
+            .from('restaurants') [cite: 64]
+            .select('*') [cite: 64]
+            .eq('phone', phone) [cite: 64]
+            .single(); [cite: 64]
 
-    if (!order_id || rating === undefined) {
-        return res.status(400).json({ status: 'error', message: 'Order ID aur Rating dono zaroori hain!' });
-    }
-
-    try {
-        const { data, error } = await supabase
-            .from('reviews') 
-            .insert([{ 
-                order_id: order_id, 
-                rating: parseInt(rating, 10), 
-                review_text: review_text || null 
-            }])
-            .select();
-
-        if (error) throw error;
-
-        res.status(200).json({ 
-            status: 'success', 
-            message: 'Review submit karne ke liye dhanyawad! ❤️',
-            data: data[0]
-        });
-    } catch (error) {
-        console.error("❌ Rate Order Server Error:", error.message);
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-// ==========================================
-// 🔥 RESTAURANT / PARTNER ROUTES 🔥
-// ==========================================
-
-app.post('/send-otp', async (req, res) => {
-    const { phone } = req.body;
-
-    if (!phone || phone.length !== 10) {
-        return res.status(400).json({ status: 'error', message: 'Kripya sahi 10-digit number dalein' });
-    }
-
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    try {
-        console.log(`Sending OTP to ${phone} via 2Factor...`);
-        const url = `https://2factor.in/API/V1/${TWO_FACTOR_API_KEY}/SMS/${phone}/${otp}/OTP1`;
-        const response = await axios.get(url);
-
-        if (response.data.Status === 'Success') {
-            console.log(`✅ Success: OTP ${otp} sent to ${phone}`);
-            return res.json({ status: 'success', message: 'OTP bhej diya gaya hai', otp: otp });
-        } else {
-            console.error("❌ 2Factor Gateway Error:", response.data);
-            return res.status(500).json({ status: 'error', message: 'SMS Gateway issue' });
-        }
-    } catch (error) {
-        console.error("❌ Server ka Error:", error.message);
-        return res.status(500).json({ status: 'error', message: 'Backend crash ho gaya.' });
-    }
-});
-
-app.post('/complete-registration', async (req, res) => {
-    const { name, phone, password } = req.body;
-    try {
-        const { data: existingUser, error: fetchError } = await supabase
-            .from('restaurants')
-            .select('*')
-            .eq('phone', phone)
-            .single();
-
-        if (existingUser) {
-            if (existingUser.status !== 'incomplete') {
-                 return res.status(400).json({ status: 'error', message: 'Ye mobile number pehle se registered hai!' });
-            } else {
-                const { error: updateError } = await supabase
-                    .from('restaurants')
-                    .update({ name: name, password: password })
-                    .eq('phone', phone);
+        if (existingUser) { [cite: 64]
+            if (existingUser.status !== 'incomplete') { [cite: 65]
+                 return res.status(400).json({ status: 'error', message: 'Ye mobile number pehle se registered hai!' }); [cite: 65]
+            } else { [cite: 65]
+                const { error: updateError } = await supabase [cite: 65]
+                    .from('restaurants') [cite: 66]
+                    .update({ name: name, password: password }) [cite: 66]
+                    .eq('phone', phone); [cite: 66]
                 
-                if (updateError) throw updateError;
-                return res.json({ status: 'success', message: 'Existing Account Updated!' });
-            }
-        }
+                if (updateError) throw updateError; [cite: 66]
+                return res.json({ status: 'success', message: 'Existing Account Updated!' }); [cite: 67]
+            } [cite: 67]
+        } [cite: 67]
 
-        const { error: insertError } = await supabase
-            .from('restaurants')
-            .insert([{ name, phone, password, status: 'incomplete' }]);
+        const { error: insertError } = await supabase [cite: 67]
+            .from('restaurants') [cite: 67]
+            .insert([{ name, phone, password, status: 'incomplete' }]); [cite: 67]
+        if (insertError) throw insertError; [cite: 68]
+        res.json({ status: 'success', message: 'Basic Account Created!' }); [cite: 68]
+    } catch (error) { [cite: 69]
+        console.error("❌ Supabase Error:", error.message); [cite: 69]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 70]
+    } [cite: 70]
+}); [cite: 70]
 
-        if (insertError) throw insertError;
-        res.json({ status: 'success', message: 'Basic Account Created!' });
+app.post('/login-partner', async (req, res) => { [cite: 70]
+    const { phone, password } = req.body; [cite: 70]
+    try { [cite: 70]
+        const { data, error } = await supabase [cite: 70]
+            .from('restaurants') [cite: 70]
+            .select('*') [cite: 70]
+            .eq('phone', phone) [cite: 70]
+            .eq('password', password) [cite: 70]
+            .maybeSingle(); [cite: 71]
 
-    } catch (error) {
-        console.error("❌ Supabase Error:", error.message);
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
+        if (error) throw error; [cite: 71]
 
-app.post('/login-partner', async (req, res) => {
-    const { phone, password } = req.body;
-    try {
-        const { data, error } = await supabase
-            .from('restaurants')
-            .select('*')
-            .eq('phone', phone)
-            .eq('password', password)
-            .maybeSingle();
+        if (data) { [cite: 71]
+            res.json({ status: 'success', partner: data }); [cite: 71]
+        } else { [cite: 71]
+            res.status(401).json({ status: 'error', message: 'Invalid credentials' }); [cite: 71]
+        } [cite: 71]
+    } catch (error) { [cite: 71]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 71]
+    } [cite: 72]
+}); [cite: 72]
 
-        if (error) throw error;
-
-        if (data) {
-            res.json({ status: 'success', partner: data });
-        } else {
-            res.status(401).json({ status: 'error', message: 'Invalid credentials' });
-        }
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-app.post('/register-restaurant-details', async (req, res) => {
-    const { 
-        phone, restaurantName, ownerName, address, cuisine, foodType, 
-        timings, fssaiUrl, panUrl, aadhaarUrl, logoUrl, accName, accNo, ifsc 
-    } = req.body;
+app.post('/register-restaurant-details', async (req, res) => { [cite: 72]
+    const {  [cite: 72]
+        phone, restaurantName, ownerName, address, cuisine, foodType,  [cite: 72]
+        timings, fssaiUrl, panUrl, aadhaarUrl, logoUrl, accName, accNo, ifsc  [cite: 72]
+    } = req.body; [cite: 72]
     
-    try {
-        const { data, error } = await supabase
-            .from('restaurants')
-            .update({ 
-                restaurant_name: restaurantName, 
-                owner_name: ownerName,
-                address: address, 
-                cuisine_type: cuisine,
-                food_type: foodType,
-                timings: timings,
-                fssai_url: fssaiUrl, 
-                pan_url: panUrl,
-                aadhaar_url: aadhaarUrl,
-                logo_url: logoUrl,
-                bank_acc_name: accName,
-                bank_acc_no: accNo,
-                bank_ifsc: ifsc,
-                status: 'pending_verification' 
-            })
-            .eq('phone', phone)
-            .select();
+    try { [cite: 72]
+        const { data, error } = await supabase [cite: 72]
+            .from('restaurants') [cite: 72]
+            .update({  [cite: 72]
+                restaurant_name: restaurantName,  [cite: 73]
+                owner_name: ownerName, [cite: 73]
+                address: address,  [cite: 73]
+                cuisine_type: cuisine, [cite: 73]
+                food_type: foodType, [cite: 73]
+                timings: timings, [cite: 74]
+                fssai_url: fssaiUrl,  [cite: 74]
+                pan_url: panUrl, [cite: 74]
+                aadhaar_url: aadhaarUrl, [cite: 74]
+                logo_url: logoUrl, [cite: 74]
+                bank_acc_name: accName, [cite: 74]
+                bank_acc_no: accNo, [cite: 75]
+                bank_ifsc: ifsc, [cite: 75]
+                status: 'pending_verification'  [cite: 75]
+            }) [cite: 75]
+            .eq('phone', phone) [cite: 75]
+            .select(); [cite: 75]
             
-        if (error) throw error;
-        res.json({ status: 'success', message: 'Restaurant details submitted successfully!' });
-    } catch (error) {
-        console.error("❌ Route 4 Crash:", error.message);
-        res.status(500).json({ status: 'error', message: error.message || "Unknown Database Error" });
-    }
-});
+        if (error) throw error; [cite: 76]
+        res.json({ status: 'success', message: 'Restaurant details submitted successfully!' }); [cite: 76]
+    } catch (error) { [cite: 77]
+        console.error("❌ Route 4 Crash:", error.message); [cite: 77]
+        res.status(500).json({ status: 'error', message: error.message || "Unknown Database Error" }); [cite: 78]
+    } [cite: 78]
+}); [cite: 78]
+app.post('/check-status', async (req, res) => { [cite: 79]
+    const { phone } = req.body; [cite: 79]
+    try { [cite: 79]
+        const { data, error } = await supabase [cite: 79]
+            .from('restaurants') [cite: 79]
+            .select('status') [cite: 79]
+            .eq('phone', phone) [cite: 79]
+            .maybeSingle(); [cite: 79]
 
-app.post('/check-status', async (req, res) => {
-    const { phone } = req.body;
-    try {
-        const { data, error } = await supabase
-            .from('restaurants')
-            .select('status')
-            .eq('phone', phone)
-            .maybeSingle();
+        if (error) throw error; [cite: 79]
 
-        if (error) throw error;
+        if (data) { [cite: 80]
+            res.json({ status: 'success', dbStatus: data.status }); [cite: 80]
+        } else { [cite: 80]
+            res.status(404).json({ status: 'error', message: 'User not found' }); [cite: 80]
+        } [cite: 80]
+    } catch (error) { [cite: 80]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 80]
+    } [cite: 80]
+}); [cite: 80]
+// ---------------------------------------------------- [cite: 81]
+// 🔥 MAIN DASHBOARD ROUTES [cite: 81]
+// ---------------------------------------------------- [cite: 81]
 
-        if (data) {
-            res.json({ status: 'success', dbStatus: data.status });
-        } else {
-            res.status(404).json({ status: 'error', message: 'User not found' });
-        }
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
+app.get('/partner/dashboard/:phone', async (req, res) => { [cite: 81]
+    const { phone } = req.params; [cite: 81]
+    try { [cite: 81]
+        const { data, error } = await supabase [cite: 81]
+            .from('restaurants') [cite: 81]
+            .select('*')  [cite: 81]
+            .eq('phone', phone) [cite: 81]
+            .maybeSingle(); [cite: 81]
 
-// ----------------------------------------------------
-// 🔥 MAIN DASHBOARD ROUTES
-// ----------------------------------------------------
-
-app.get('/partner/dashboard/:phone', async (req, res) => {
-    const { phone } = req.params;
-    try {
-        const { data, error } = await supabase
-            .from('restaurants')
-            .select('*') 
-            .eq('phone', phone)
-            .maybeSingle();
-
-        if (error) throw error;
+        if (error) throw error; [cite: 82]
         
-        if (data) {
-            res.json({ status: 'success', data: data });
-        } else {
-            res.status(404).json({ status: 'error', message: 'Restaurant not found' });
-        }
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
+        if (data) { [cite: 82]
+            res.json({ status: 'success', data: data }); [cite: 82]
+        } else { [cite: 82]
+            res.status(404).json({ status: 'error', message: 'Restaurant not found' }); [cite: 82]
+        } [cite: 82]
+    } catch (error) { [cite: 82]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 82]
+    } [cite: 82]
+}); [cite: 82]
+app.post('/partner/update-status', async (req, res) => { [cite: 83]
+    const { phone, is_online } = req.body; [cite: 83]
+    try { [cite: 83]
+        const { data, error } = await supabase [cite: 83]
+            .from('restaurants') [cite: 83]
+            .update({ is_online: is_online }) [cite: 83]
+            .eq('phone', phone); [cite: 83]
 
-app.post('/partner/update-status', async (req, res) => {
-    const { phone, is_online } = req.body;
-    try {
-        const { data, error } = await supabase
-            .from('restaurants')
-            .update({ is_online: is_online })
-            .eq('phone', phone);
+        if (error) throw error; [cite: 83]
+        res.json({ status: 'success', message: 'Status updated to ' + (is_online ? 'Online' : 'Offline') }); [cite: 84]
+    } catch (error) { [cite: 84]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 84]
+    } [cite: 84]
+}); [cite: 84]
+// ---------------------------------------------------- [cite: 85]
+// 🔥 MENU MANAGEMENT ROUTES [cite: 85]
+// ---------------------------------------------------- [cite: 85]
 
-        if (error) throw error;
-        res.json({ status: 'success', message: 'Status updated to ' + (is_online ? 'Online' : 'Offline') });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-// ----------------------------------------------------
-// 🔥 MENU MANAGEMENT ROUTES
-// ----------------------------------------------------
-
-app.post('/partner/add-category', async (req, res) => {
-    const { restaurant_phone, name, sort_order } = req.body;
-    try {
-        const { data, error } = await supabase
-            .from('menu_categories')
-            .insert([{ restaurant_phone, name, sort_order }])
-            .select();
+app.post('/partner/add-category', async (req, res) => { [cite: 85]
+    const { restaurant_phone, name, sort_order } = req.body; [cite: 85]
+    try { [cite: 85]
+        const { data, error } = await supabase [cite: 85]
+            .from('menu_categories') [cite: 85]
+            .insert([{ restaurant_phone, name, sort_order }]) [cite: 85]
+            .select(); [cite: 85]
              
-        if (error) throw error;
-        res.json({ status: 'success', message: 'Category added successfully!', data });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-app.get('/partner/categories/:phone', async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('menu_categories')
-            .select('*')
-            .eq('restaurant_phone', req.params.phone)
-            .order('sort_order', { ascending: true }); 
+        if (error) throw error; [cite: 86]
+        res.json({ status: 'success', message: 'Category added successfully!', data }); [cite: 86]
+    } catch (error) { [cite: 86]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 86]
+    } [cite: 86]
+}); [cite: 86]
+app.get('/partner/categories/:phone', async (req, res) => { [cite: 87]
+    try { [cite: 87]
+        const { data, error } = await supabase [cite: 87]
+            .from('menu_categories') [cite: 87]
+            .select('*') [cite: 87]
+            .eq('restaurant_phone', req.params.phone) [cite: 87]
+            .order('sort_order', { ascending: true });  [cite: 87]
             
-        if (error) throw error;
-        res.json({ status: 'success', data });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-app.post('/partner/add-item', async (req, res) => {
-    const { 
-        restaurant_phone, category_id, item_name, description, 
-        is_veg, base_price, image_url, is_available, has_variants, prep_time 
-    } = req.body;
+        if (error) throw error; [cite: 88]
+        res.json({ status: 'success', data }); [cite: 88]
+    } catch (error) { [cite: 88]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 88]
+    } [cite: 88]
+}); [cite: 88]
+app.post('/partner/add-item', async (req, res) => { [cite: 89]
+    const {  [cite: 89]
+        restaurant_phone, category_id, item_name, description,  [cite: 89]
+        is_veg, base_price, image_url, is_available, has_variants, prep_time  [cite: 89]
+    } = req.body; [cite: 89]
     
-    try {
-        const { data, error } = await supabase
-            .from('menu_items')
-            .insert([{ 
-                restaurant_phone, category_id, item_name, description, 
-                is_veg, base_price, image_url, is_available, has_variants, prep_time 
-            }])
-            .select();
+    try { [cite: 89]
+        const { data, error } = await supabase [cite: 89]
+            .from('menu_items') [cite: 89]
+            .insert([{  [cite: 89]
+                restaurant_phone, category_id, item_name, description,  [cite: 90]
+                is_veg, base_price, image_url, is_available, has_variants, prep_time  [cite: 90]
+            }]) [cite: 90]
+            .select(); [cite: 90]
             
-        if (error) throw error;
-        res.json({ status: 'success', message: 'Dish added successfully!', data });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-app.get('/partner/menu/:phone', async (req, res) => {
-    try {
-        const { data: menuItems, error: menuErr } = await supabase
-            .from('menu_items')
-            .select('*')
-            .eq('restaurant_phone', req.params.phone);
+        if (error) throw error; [cite: 90]
+        res.json({ status: 'success', message: 'Dish added successfully!', data }); [cite: 90]
+    } catch (error) { [cite: 91]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 91]
+    } [cite: 91]
+}); [cite: 91]
+app.get('/partner/menu/:phone', async (req, res) => { [cite: 92]
+    try { [cite: 92]
+        const { data: menuItems, error: menuErr } = await supabase [cite: 92]
+            .from('menu_items') [cite: 92]
+            .select('*') [cite: 92]
+            .eq('restaurant_phone', req.params.phone); [cite: 92]
             
-        if (menuErr) throw menuErr;
+        if (menuErr) throw menuErr; [cite: 92]
 
-        if (!menuItems || menuItems.length === 0) {
-            return res.json({ status: 'success', data: [] });
-        }
+        if (!menuItems || menuItems.length === 0) { [cite: 93]
+            return res.json({ status: 'success', data: [] }); [cite: 93]
+        } [cite: 93]
 
-        const itemIds = menuItems.map(item => item.id);
+        const itemIds = menuItems.map(item => item.id); [cite: 93]
 
-        const { data: variants, error: varErr } = await supabase
-            .from('item_variants')
-            .select('*')
-            .in('item_id', itemIds);
+        const { data: variants, error: varErr } = await supabase [cite: 93]
+            .from('item_variants') [cite: 93]
+            .select('*') [cite: 93]
+            .in('item_id', itemIds); [cite: 93]
 
-        const { data: addons, error: addErr } = await supabase
-            .from('item_addons')
-            .select('*')
-            .in('item_id', itemIds);
+        const { data: addons, error: addErr } = await supabase [cite: 94]
+            .from('item_addons') [cite: 94]
+            .select('*') [cite: 94]
+            .in('item_id', itemIds); [cite: 94]
 
-        const completeMenu = menuItems.map(item => {
-            return {
-                ...item,
-                variants: variants ? variants.filter(v => v.item_id === item.id) : [],
-                addons: addons ? addons.filter(a => a.item_id === item.id) : []
-            };
-        });
+        const completeMenu = menuItems.map(item => { [cite: 94]
+            return { [cite: 94]
+                ...item, [cite: 94]
+                variants: variants ? variants.filter(v => v.item_id === item.id) : [], [cite: 95]
+                addons: addons ? addons.filter(a => a.item_id === item.id) : [] [cite: 96]
+            }; [cite: 96]
+        }); [cite: 96]
+        res.json({ status: 'success', data: completeMenu }); [cite: 97]
+
+    } catch (error) { [cite: 97]
+        console.error("❌ Menu Fetch Crash Error:", error); [cite: 97]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 98]
+    } [cite: 98]
+}); [cite: 98]
+
+app.post('/add-menu-item', async (req, res) => { [cite: 98]
+    try { [cite: 98]
+        const {  [cite: 98]
+            restaurant_phone, item_name, category, description, is_veg,  [cite: 98]
+            is_available, prep_time, image_url, has_variants, base_price, price, variants, addons  [cite: 98]
+        } = req.body; [cite: 98]
+
+        if (!restaurant_phone) { [cite: 98]
+            return res.status(400).json({ error: "Restaurant phone is missing from app!" }); [cite: 99]
+        } [cite: 99]
+
+        const safeIsAvailable = is_available !== undefined ? is_available : true; [cite: 99]
+
+        const { data: menuItem, error: itemError } = await supabase [cite: 99]
+            .from('menu_items') [cite: 99]
+            .insert([{ [cite: 99]
+                restaurant_phone: restaurant_phone, [cite: 99]
+                item_name: item_name, [cite: 100]
+                category: category, [cite: 100]
+                description: description, [cite: 100]
+                is_veg: is_veg, [cite: 100]
+                is_available: safeIsAvailable, [cite: 100]
+                prep_time: prep_time, [cite: 100]
+                image_url: image_url, [cite: 101]
+                has_variants: has_variants, [cite: 101]
+                base_price: base_price || price || null, [cite: 102]
+                price: price || null [cite: 103]
+            }]) [cite: 103]
+            .select() [cite: 103]
+            .single(); [cite: 103]
+        if (itemError) throw itemError; [cite: 104]
+
+        const newDishId = menuItem.id; [cite: 104]
+
+        if (has_variants && variants && variants.length > 0) { [cite: 104]
+            const variantsToInsert = variants.map(v => ({ [cite: 104]
+                item_id: newDishId, [cite: 104]
+                variant_name: v.name || v.variant_name, [cite: 104]
+                price: v.price [cite: 104]
+            })); [cite: 104]
+            await supabase.from('item_variants').insert(variantsToInsert); [cite: 105]
+        } [cite: 105]
         
-        res.json({ status: 'success', data: completeMenu });
+        if (addons && addons.length > 0) { [cite: 105]
+            const addonsToInsert = addons.map(a => ({ [cite: 105]
+                item_id: newDishId, [cite: 105]
+                addon_name: a.name || a.addon_name, [cite: 105]
+                price: a.price [cite: 105]
+            })); [cite: 106]
+            await supabase.from('item_addons').insert(addonsToInsert); [cite: 106]
+        } [cite: 106]
 
-    } catch (error) {
-        console.error("❌ Menu Fetch Crash Error:", error);
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
+        res.status(200).json({ status: "success", message: "Dish saved successfully!" }); [cite: 106]
+    } catch (error) { [cite: 107]
+        console.error("❌ API 14 Server Crash Error:", error); [cite: 107]
+        res.status(500).json({ error: error.message || "Internal Server Error" }); [cite: 108]
+    } [cite: 108]
+}); [cite: 108]
 
-app.post('/add-menu-item', async (req, res) => {
-    try {
-        const { 
-            restaurant_phone, item_name, category, description, is_veg, 
-            is_available, prep_time, image_url, has_variants, base_price, price, variants, addons 
-        } = req.body;
+app.post('/partner/update-item-availability', async (req, res) => { [cite: 108]
+    const { id, is_available } = req.body; [cite: 108]
+    try { [cite: 108]
+        const numericId = parseInt(id, 10); [cite: 108]
+        const booleanStatus = (is_available === true || is_available === 'true'); [cite: 108]
 
-        if (!restaurant_phone) {
-            return res.status(400).json({ error: "Restaurant phone is missing from app!" });
-        }
+        const { data, error } = await supabase [cite: 108]
+            .from('menu_items')  [cite: 108]
+            .update({ is_available: booleanStatus }) [cite: 109]
+            .eq('id', numericId) [cite: 109]
+            .select();  [cite: 109]
 
-        const safeIsAvailable = is_available !== undefined ? is_available : true;
+        if (error) throw error; [cite: 109]
+        res.json({ status: 'success', message: 'Item availability updated!' }); [cite: 109]
 
-        const { data: menuItem, error: itemError } = await supabase
-            .from('menu_items')
-            .insert([{
-                restaurant_phone: restaurant_phone,
-                item_name: item_name,
-                category: category,
-                description: description,
-                is_veg: is_veg,
-                is_available: safeIsAvailable,
-                prep_time: prep_time,
-                image_url: image_url,
-                has_variants: has_variants,
-                base_price: base_price || price || null,
-                price: price || null
-            }])
-            .select()
-            .single();
-            
-        if (itemError) throw itemError;
+    } catch (error) { [cite: 109]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 109]
+    } [cite: 109]
+}); [cite: 109]
+app.post('/partner/update-variant-availability', async (req, res) => { [cite: 110]
+    const { id, is_available } = req.body; [cite: 110]
+    try { [cite: 110]
+        const numericId = parseInt(id, 10); [cite: 110]
+        const booleanStatus = (is_available === true || is_available === 'true'); [cite: 110]
 
-        const newDishId = menuItem.id;
+        const { data, error } = await supabase [cite: 110]
+            .from('item_variants') [cite: 110]
+            .update({ is_available: booleanStatus }) [cite: 110]
+            .eq('id', numericId) [cite: 111]
+            .select();  [cite: 111]
 
-        if (has_variants && variants && variants.length > 0) {
-            const variantsToInsert = variants.map(v => ({
-                item_id: newDishId,
-                variant_name: v.name || v.variant_name,
-                price: v.price
-            }));
-            await supabase.from('item_variants').insert(variantsToInsert);
-        }
+        if (error) throw error; [cite: 111]
+        res.json({ status: 'success', message: 'Variant availability updated!' }); [cite: 111]
+
+    } catch (error) { [cite: 111]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 111]
+    } [cite: 111]
+}); [cite: 111]
+app.delete('/partner/delete-item/:id', async (req, res) => { [cite: 112]
+    try { [cite: 112]
+        const itemId = parseInt(req.params.id, 10); [cite: 112]
+
+        await supabase.from('item_variants').delete().eq('item_id', itemId); [cite: 112]
+        await supabase.from('item_addons').delete().eq('item_id', itemId); [cite: 112]
         
-        if (addons && addons.length > 0) {
-            const addonsToInsert = addons.map(a => ({
-                item_id: newDishId,
-                addon_name: a.name || a.addon_name,
-                price: a.price
-            }));
-            await supabase.from('item_addons').insert(addonsToInsert);
-        }
+        const { error } = await supabase.from('menu_items').delete().eq('id', itemId); [cite: 112]
+        if (error) throw error; [cite: 112]
 
-        res.status(200).json({ status: "success", message: "Dish saved successfully!" });
-    } catch (error) {
-        console.error("❌ API 14 Server Crash Error:", error);
-        res.status(500).json({ error: error.message || "Internal Server Error" });
-    }
-});
+        res.json({ status: 'success', message: 'Item deleted successfully!' }); [cite: 112]
+    } catch (error) { [cite: 112]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 113]
+    } [cite: 113]
+}); [cite: 113]
+app.post('/partner/update-menu-item', async (req, res) => { [cite: 114]
+    try { [cite: 114]
+        const {  [cite: 114]
+            id, item_name, category, description, is_veg,  [cite: 114]
+            prep_time, image_url, base_price, has_variants, variants, addons  [cite: 114]
+        } = req.body; [cite: 114]
 
-app.post('/partner/update-item-availability', async (req, res) => {
-    const { id, is_available } = req.body;
-    try {
-        const numericId = parseInt(id, 10);
-        const booleanStatus = (is_available === true || is_available === 'true');
+        const numericId = parseInt(id, 10); [cite: 114]
 
-        const { data, error } = await supabase
-            .from('menu_items') 
-            .update({ is_available: booleanStatus })
-            .eq('id', numericId)
-            .select(); 
+        const { error: updateErr } = await supabase [cite: 114]
+            .from('menu_items') [cite: 115]
+            .update({ [cite: 115]
+                item_name, category, description, is_veg,  [cite: 115]
+                prep_time, image_url, base_price, has_variants [cite: 115]
+            }) [cite: 115]
+            .eq('id', numericId); [cite: 115]
 
-        if (error) throw error;
-        res.json({ status: 'success', message: 'Item availability updated!' });
+        if (updateErr) throw updateErr; [cite: 115]
 
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
+        await supabase.from('item_variants').delete().eq('item_id', numericId); [cite: 116]
+        await supabase.from('item_addons').delete().eq('item_id', numericId); [cite: 116]
 
-app.post('/partner/update-variant-availability', async (req, res) => {
-    const { id, is_available } = req.body;
-    try {
-        const numericId = parseInt(id, 10);
-        const booleanStatus = (is_available === true || is_available === 'true');
-
-        const { data, error } = await supabase
-            .from('item_variants')
-            .update({ is_available: booleanStatus })
-            .eq('id', numericId)
-            .select(); 
-
-        if (error) throw error;
-        res.json({ status: 'success', message: 'Variant availability updated!' });
-
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-app.delete('/partner/delete-item/:id', async (req, res) => {
-    try {
-        const itemId = parseInt(req.params.id, 10);
-
-        await supabase.from('item_variants').delete().eq('item_id', itemId);
-        await supabase.from('item_addons').delete().eq('item_id', itemId);
+        if (has_variants && variants && variants.length > 0) { [cite: 116]
+            const vData = variants.map(v => ({ item_id: numericId, variant_name: v.name || v.variant_name, price: v.price })); [cite: 116]
+            await supabase.from('item_variants').insert(vData); [cite: 116]
+        } [cite: 117]
         
-        const { error } = await supabase.from('menu_items').delete().eq('id', itemId);
-        if (error) throw error;
+        if (addons && addons.length > 0) { [cite: 117]
+            const aData = addons.map(a => ({ item_id: numericId, addon_name: a.name || a.addon_name, price: a.price })); [cite: 117]
+            await supabase.from('item_addons').insert(aData); [cite: 118]
+        } [cite: 118]
 
-        res.json({ status: 'success', message: 'Item deleted successfully!' });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
+        res.json({ status: 'success', message: 'Dish updated successfully!' }); [cite: 118]
+    } catch (error) { [cite: 119]
+        console.error("❌ Update Item Crash:", error); [cite: 119]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 120]
+    } [cite: 120]
+}); [cite: 120]
 
-app.post('/partner/update-menu-item', async (req, res) => {
-    try {
-        const { 
-            id, item_name, category, description, is_veg, 
-            prep_time, image_url, base_price, has_variants, variants, addons 
-        } = req.body;
+// ========================================== [cite: 120]
+// 🔥 CUSTOMER (USER) AUTHENTICATION & PROFILE ROUTES 🔥 [cite: 120]
+// ========================================== [cite: 120]
 
-        const numericId = parseInt(id, 10);
+app.post('/user/check', async (req, res) => { [cite: 120]
+    const { phone } = req.body; [cite: 120]
+    if (!phone) return res.status(400).json({ status: 'error', message: 'Phone number zaroori hai!' }); [cite: 120]
 
-        const { error: updateErr } = await supabase
-            .from('menu_items')
-            .update({
-                item_name, category, description, is_veg, 
-                prep_time, image_url, base_price, has_variants
-            })
-            .eq('id', numericId);
+    try { [cite: 120]
+        const { data, error } = await supabase.from('users').select('*').eq('phone', phone).maybeSingle(); [cite: 120]
+        if (error) throw error; [cite: 120]
+        if (data) { [cite: 120]
+            res.json({ status: 'exists', message: 'Welcome back!', user: data }); [cite: 121]
+        } else { [cite: 121]
+            res.json({ status: 'new', message: 'Naya user hai, register karna padega.' }); [cite: 121]
+        } [cite: 121]
+    } catch (error) { [cite: 121]
+        res.status(500).json({ status: 'error', message: `DB Error: ${error.message}` }); [cite: 121]
+    } [cite: 121]
+}); [cite: 121]
+app.post('/user/register', async (req, res) => { [cite: 122]
+    const { phone, full_name, email } = req.body; [cite: 122]
+    if (!phone || !full_name) return res.status(400).json({ status: 'error', message: 'Phone aur Name dono zaroori hain!' }); [cite: 122]
 
-        if (updateErr) throw updateErr;
+    try { [cite: 122]
+        const { data, error } = await supabase.from('users').insert([{ phone, full_name, email: email || null }]).select().single(); [cite: 122]
+        if (error) { [cite: 122]
+            if (error.code === '23505') return res.status(400).json({ status: 'error', message: 'Ye number pehle se registered hai!' }); [cite: 122]
+            return res.status(500).json({ status: 'error', message: `Supabase Error: ${error.message}` }); [cite: 123]
+        } [cite: 123]
+        res.json({ status: 'success', message: 'Account ban gaya!', user: data }); [cite: 123]
+    } catch (error) { [cite: 123]
+        res.status(500).json({ status: 'error', message: `Server Crash: ${error.message}` }); [cite: 123]
+    } [cite: 123]
+}); [cite: 123]
+app.post('/user/update-profile', async (req, res) => { [cite: 124]
+    const { current_phone, new_phone, full_name, email, image } = req.body; [cite: 124]
 
-        await supabase.from('item_variants').delete().eq('item_id', numericId);
-        if (has_variants && variants && variants.length > 0) {
-            const vData = variants.map(v => ({ item_id: numericId, variant_name: v.name || v.variant_name, price: v.price }));
-            await supabase.from('item_variants').insert(vData);
-        }
+    if (!current_phone) { [cite: 124]
+        return res.status(400).json({ status: 'error', message: 'User ka phone number missing hai!' }); [cite: 124]
+    } [cite: 124]
 
-        await supabase.from('item_addons').delete().eq('item_id', numericId);
-        if (addons && addons.length > 0) {
-            const aData = addons.map(a => ({ item_id: numericId, addon_name: a.name || a.addon_name, price: a.price }));
-            await supabase.from('item_addons').insert(aData);
-        }
+    try { [cite: 124]
+        let secureUrl = null; [cite: 124]
+        if (image) { [cite: 124]
+            const base64Image = image.startsWith('data:image') ? image : `data:image/jpeg;base64,${image}`; [cite: 124]
+            const uploadResponse = await cloudinary.uploader.upload(base64Image, { folder: 'khaanaleaao_users', width: 400, crop: 'scale' }); [cite: 125]
+            secureUrl = uploadResponse.secure_url; [cite: 125]
+        } [cite: 125]
 
-        res.json({ status: 'success', message: 'Dish updated successfully!' });
-    } catch (error) {
-        console.error("❌ Update Item Crash:", error);
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
+        const updates = { updated_at: new Date() }; [cite: 125]
+        if (full_name) updates.full_name = full_name; [cite: 125]
+        if (email) updates.email = email; [cite: 125]
+        if (new_phone) updates.phone = new_phone; [cite: 125]
+        if (secureUrl) updates.profile_image_url = secureUrl; [cite: 126]
 
-// ==========================================
-// 🔥 CUSTOMER (USER) AUTHENTICATION & PROFILE ROUTES 🔥
-// ==========================================
-app.post('/user/check', async (req, res) => {
-    const { phone } = req.body;
-    if (!phone) return res.status(400).json({ status: 'error', message: 'Phone number zaroori hai!' });
-    try {
-        const { data, error } = await supabase.from('users').select('*').eq('phone', phone).maybeSingle();
-        if (error) throw error;
-        if (data) {
-            res.json({ status: 'exists', message: 'Welcome back!', user: data });
-        } else {
-            res.json({ status: 'new', message: 'Naya user hai, register karna padega.' });
-        }
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: `DB Error: ${error.message}` });
-    }
-});
+        const { data, error } = await supabase [cite: 126]
+            .from('users') [cite: 126]
+            .update(updates) [cite: 126]
+            .eq('phone', current_phone) [cite: 126]
+            .select() [cite: 126]
+            .single(); [cite: 126]
+        if (error) { [cite: 127]
+            console.error('Supabase Update Error:', error); [cite: 127]
+            return res.status(500).json({ status: 'error', message: 'Database update me error aayi.' }); [cite: 128]
+        } [cite: 129]
 
-app.post('/user/register', async (req, res) => {
-    const { phone, full_name, email } = req.body;
-    if (!phone || !full_name) return res.status(400).json({ status: 'error', message: 'Phone aur Name dono zaroori hain!' });
-    try {
-        const { data, error } = await supabase.from('users').insert([{ phone, full_name, email: email || null }]).select().single();
-        if (error) {
-            if (error.code === '23505') return res.status(400).json({ status: 'error', message: 'Ye number pehle se registered hai!' });
-            return res.status(500).json({ status: 'error', message: `Supabase Error: ${error.message}` });
-        }
-        res.json({ status: 'success', message: 'Account ban gaya!', user: data });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: `Server Crash: ${error.message}` });
-    }
-});
+        res.status(200).json({ status: 'success', message: 'Profile updated successfully!', user: data, imageUrl: secureUrl }); [cite: 129]
+    } catch (error) { [cite: 130]
+        console.error('Profile Update Backend Error:', error); [cite: 130]
+        res.status(500).json({ status: 'error', message: 'Server error.', error: error.message }); [cite: 131]
+    } [cite: 131]
+}); [cite: 131]
+// ========================================== [cite: 132]
+// 🔥 CUSTOMER APP HOME SCREEN ROUTES [cite: 132]
+// ========================================== [cite: 132]
 
-app.post('/user/update-profile', async (req, res) => {
-    const { current_phone, new_phone, full_name, email, image } = req.body;
-    if (!current_phone) {
-        return res.status(400).json({ status: 'error', message: 'User ka phone number missing hai!' });
-    }
-    try {
-        let secureUrl = null;
-        if (image) {
-            const base64Image = image.startsWith('data:image') ? image : `data:image/jpeg;base64,${image}`;
-            const uploadResponse = await cloudinary.uploader.upload(base64Image, { folder: 'khaanaleaao_users', width: 400, crop: 'scale' });
-            secureUrl = uploadResponse.secure_url;
-        }
-        const updates = { updated_at: new Date() };
-        if (full_name) updates.full_name = full_name;
-        if (email) updates.email = email;
-        if (new_phone) updates.phone = new_phone;
-        if (secureUrl) updates.profile_image_url = secureUrl;
+app.get('/customer/restaurants', async (req, res) => { [cite: 132]
+    try { [cite: 132]
+        const { data, error } = await supabase.from('restaurants').select('phone, name, restaurant_name, cuisine_type, logo_url, is_online').eq('status', 'active'); [cite: 132]
+        if (error) throw error; [cite: 132]
+        res.json({ status: 'success', data: data }); [cite: 132]
+    } catch (error) { [cite: 132]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 132]
+    } [cite: 132]
+}); [cite: 132]
+app.get('/customer/categories', async (req, res) => { [cite: 133]
+    try { [cite: 133]
+        const { data, error } = await supabase.from('app_categories').select('*'); [cite: 133]
+        if (error || !data || data.length === 0) { [cite: 133]
+            const defaultCategories = [ [cite: 133]
+                { id: "1", name: "Offers", logo_url: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&q=80" }, [cite: 133]
+                { id: "2", name: "Pizza", logo_url: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500&q=80" }, [cite: 134]
+                { id: "3", name: "Burger", logo_url: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&q=80" } [cite: 134]
+            ]; [cite: 134]
+            return res.json({ status: 'success', data: defaultCategories }); [cite: 134]
+        } [cite: 134]
+        res.json({ status: 'success', data: data }); [cite: 134]
+    } catch (error) { [cite: 134]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 134]
+    } [cite: 135]
+}); [cite: 135]
 
-        const { data, error } = await supabase.from('users').update(updates).eq('phone', current_phone).select();
-        if (error) throw error;
-        
-        res.json({ status: 'success', message: 'Profile update ho gayi!', data: data, imageUrl: secureUrl });
-    } catch (error) {
-        console.error('Profile Update Backend Error:', error);
-        res.status(500).json({ status: 'error', message: 'Server error.', error: error.message });
-    }
-});
-
-// ==========================================
-// 🔥 CUSTOMER APP HOME SCREEN ROUTES
-// ==========================================
-app.get('/customer/restaurants', async (req, res) => {
-    try {
-        const { data, error } = await supabase.from('restaurants').select('phone, name, restaurant_name, cuisine_type, logo_url, is_online').eq('status', 'active');
-        if (error) throw error;
-        res.json({ status: 'success', data: data });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-app.get('/customer/categories', async (req, res) => {
-    try {
-        const { data, error } = await supabase.from('app_categories').select('*');
-        if (error || !data || data.length === 0) {
-            const defaultCategories = [
-                { id: "1", name: "Offers", logo_url: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&q=80" },
-                { id: "2", name: "Pizza", logo_url: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500&q=80" },
-                { id: "3", name: "Burger", logo_url: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&q=80" }
-            ];
-            return res.json({ status: 'success', data: defaultCategories });
-        }
-        res.json({ status: 'success', data: data });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-app.post('/partner/updateProfile', async (req, res) => {
-    const { phone, field, value } = req.body;
-    if (!phone || !field) return res.status(400).json({ status: 'error', message: 'Phone aur field name zaroori hai!' });
-    try {
-        const { data, error } = await supabase.from('restaurants').update({ [field]: value }).eq('phone', phone).select();
-        if (error) throw error;
-        res.json({ status: 'success', message: `${field} updated successfully!`, data: data });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-// ==========================================
-// 🔥 USER ADDRESS MANAGEMENT ROUTES
-// ==========================================
-app.post('/user/address/add', async (req, res) => {
-    const { user_id, address_type, receiver_name, full_address, receiver_phone } = req.body;
-    if (!user_id || !full_address || !receiver_phone) return res.status(400).json({ status: 'error', message: 'Data incomplete hai!' });
-    try {
-        const { data, error } = await supabase.from('user_addresses').insert([{ user_id, address_type, receiver_name, full_address, receiver_phone }]).select();
-        if (error) throw error;
-        res.json({ status: 'success', message: 'Address save ho gaya!', data });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-app.get('/user/addresses/:userId', async (req, res) => {
-    try {
-        const { data, error } = await supabase.from('user_addresses').select('*').eq('user_id', req.params.userId);
-        if (error) throw error;
-        res.json({ status: 'success', data });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-app.post('/user/address/update', async (req, res) => {
-    const { id, address_type, receiver_name, full_address, receiver_phone } = req.body;
-    if (!id) return res.status(400).json({ status: 'error', message: 'Address ID zaroori hai!' });
-    try {
-        const { data, error } = await supabase.from('user_addresses').update({ address_type, receiver_name, full_address, receiver_phone }).eq('id', id).select();
-        if (error) throw error;
-        res.json({ status: 'success', message: 'Address update ho gaya!', data });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-app.delete('/user/address/delete/:id', async (req, res) => {
-    try {
-        const { error } = await supabase.from('user_addresses').delete().eq('id', req.params.id);
-        if (error) throw error;
-        res.json({ status: 'success', message: 'Address delete kar diya gaya hai!' });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-// ==========================================
-// 🚀 🔥 ORDER MANAGEMENT & ADMIN POWERS 🔥 🚀
-// ==========================================
-app.post('/order/place', async (req, res) => {
-    const { user_id, restaurant_id, restaurant_name, order_items, delivery_address, receiver_name, receiver_phone, cooking_instructions, item_total, delivery_charge, grand_total, payment_mode, payment_id } = req.body;
-    if (!user_id || !restaurant_id || !order_items || !grand_total) {
-        return res.status(400).json({ status: 'error', message: 'Order details missing hain!' });
-    }
-    try {
-        const { data, error } = await supabase
-            .from('orders')
-            .insert([{ user_id, restaurant_id, restaurant_name, order_items, delivery_address, receiver_name, receiver_phone, cooking_instructions, item_total, delivery_charge, grand_total, payment_mode: payment_mode || 'COD', payment_id: payment_id || null, order_status: 'Pending' }])
-            .select()
-            .single();
-            
-        if (error) throw error;
-        res.json({ status: 'success', message: 'Order Confirmed!', order: data });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-app.get('/order/customer/:userId', async (req, res) => {
-    try {
-        const { data, error } = await supabase.from('orders').select('*').eq('user_id', req.params.userId).order('created_at', { ascending: false });
-        if (error) throw error;
-        res.json({ status: 'success', data });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-app.post('/admin/update-order-status', async (req, res) => {
-    const { order_id, status } = req.body;
-    try {
-        const { data, error } = await supabase.from('orders').update({ order_status: status }).eq('id', order_id).select();
-        if (error) throw error;
-        res.json({ status: 'success', message: `Order status changed to ${status}!`, data });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-app.get('/admin/all-orders', async (req, res) => {
-    try {
-        const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-        if (error) throw error;
-        res.json({ status: 'success', data });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-app.get('/admin/restaurants', async (req, res) => {
-    try {
-        const { data, error } = await supabase.from('restaurants').select('*').order('created_at', { ascending: false });
-        if (error) throw error;
-        res.json({ status: 'success', data });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-// ==========================================
-// 🛵 DELIVERY PARTNER (RIDER) APIs (OTP ADDED) 🛵
-// ==========================================
-
-// 1. Rider - Send OTP API
-app.post('/rider/send-otp', async (req, res) => {
-    const { mobile } = req.body;
-    if (!mobile || mobile.length !== 10) {
-        return res.status(400).json({ status: 'error', message: 'Sahi 10-digit number daalein!' });
-    }
+app.post('/partner/updateProfile', async (req, res) => { [cite: 135]
+    const { phone, field, value } = req.body; [cite: 135]
+    if (!phone || !field) return res.status(400).json({ status: 'error', message: 'Phone aur field name zaroori hai!' }); [cite: 135]
     
-    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    try { [cite: 135]
+        const { data, error } = await supabase.from('restaurants').update({ [field]: value }).eq('phone', phone).select(); [cite: 135]
+        if (error) throw error; [cite: 135]
+        res.json({ status: 'success', message: `${field} updated successfully!`, data: data }); [cite: 135]
+    } catch (error) { [cite: 135]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 136]
+    } [cite: 136]
+}); [cite: 136]
+// ========================================== [cite: 137]
+// 🔥 USER ADDRESS MANAGEMENT ROUTES [cite: 137]
+// ========================================== [cite: 137]
+
+app.post('/user/address/add', async (req, res) => { [cite: 137]
+    const { user_id, address_type, receiver_name, full_address, receiver_phone } = req.body; [cite: 137]
+    if (!user_id || !full_address || !receiver_phone) return res.status(400).json({ status: 'error', message: 'Zaroori details missing hain!' }); [cite: 137]
     
-    // Memory mein OTP save karo (10 mins valid)
-    riderOtpStorage.set(mobile, otp);
-    setTimeout(() => riderOtpStorage.delete(mobile), 10 * 60 * 1000);
+    try { [cite: 137]
+        const { data, error } = await supabase.from('user_addresses').insert([{ user_id, address_type: address_type || 'Home', receiver_name, full_address, receiver_phone }]).select(); [cite: 137]
+        if (error) throw error; [cite: 137]
+        res.json({ status: 'success', message: 'Address successfully save ho gaya!', data }); [cite: 138]
+    } catch (error) { [cite: 138]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 138]
+    } [cite: 138]
+}); [cite: 138]
+app.get('/user/addresses/:userId', async (req, res) => { [cite: 139]
+    try { [cite: 139]
+        const { data, error } = await supabase.from('user_addresses').select('*').eq('user_id', req.params.userId).order('created_at', { ascending: false }); [cite: 139]
+        if (error) throw error; [cite: 139]
+        res.json({ status: 'success', data }); [cite: 139]
+    } catch (error) { [cite: 139]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 139]
+    } [cite: 139]
+}); [cite: 139]
+app.post('/user/address/update', async (req, res) => { [cite: 140]
+    const { id, address_type, receiver_name, full_address, receiver_phone } = req.body; [cite: 140]
+    if (!id) return res.status(400).json({ status: 'error', message: 'Address ID zaroori hai!' }); [cite: 140]
     
-    try {
-        console.log(`Sending Rider OTP ${otp} to ${mobile} via 2Factor...`);
-        const url = `https://2factor.in/API/V1/${TWO_FACTOR_API_KEY}/SMS/${mobile}/${otp}/OTP1`;
-        const response = await axios.get(url);
-        
-        if (response.data.Status === 'Success') {
-            return res.json({ status: 'success', message: 'OTP SMS par bhej diya gaya hai!', otp: otp });
-        } else {
-            return res.status(500).json({ status: 'error', message: 'SMS Gateway issue' });
-        }
-    } catch (error) {
-        return res.status(500).json({ status: 'error', message: 'Backend crash ho gaya.' });
-    }
-});
+    try { [cite: 140]
+        const { data, error } = await supabase.from('user_addresses').update({ address_type, receiver_name, full_address, receiver_phone }).eq('id', id).select(); [cite: 140]
+        if (error) throw error; [cite: 140]
+        res.json({ status: 'success', message: 'Address update ho gaya!', data }); [cite: 140]
+    } catch (error) { [cite: 140]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 141]
+    } [cite: 141]
+}); [cite: 141]
+app.delete('/user/address/delete/:id', async (req, res) => { [cite: 142]
+    try { [cite: 142]
+        const { error } = await supabase.from('user_addresses').delete().eq('id', req.params.id); [cite: 142]
+        if (error) throw error; [cite: 142]
+        res.json({ status: 'success', message: 'Address delete kar diya gaya hai!' }); [cite: 142]
+    } catch (error) { [cite: 142]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 142]
+    } [cite: 142]
+}); [cite: 142]
+// ========================================== [cite: 143]
+// 🚀 🔥 ORDER MANAGEMENT & ADMIN POWERS 🔥 🚀 [cite: 143]
+// ========================================== [cite: 143]
 
-// 2. Rider - Verify OTP & Login
-app.post('/rider/login', async (req, res) => {
-    const { mobile, name, vehicle_number } = req.body;
+app.post('/order/place', async (req, res) => { [cite: 143]
+    const {  [cite: 143]
+        user_id, restaurant_id, restaurant_name, order_items, delivery_address,  [cite: 143]
+        receiver_name, receiver_phone, cooking_instructions, item_total,  [cite: 143]
+        delivery_charge, grand_total, payment_mode, payment_id  [cite: 143]
+    } = req.body; [cite: 143]
+    
+    if (!user_id || !restaurant_id || !order_items || !grand_total) { [cite: 143]
+        return res.status(400).json({ status: 'error', message: 'Order details missing hain!' }); [cite: 143]
+    } [cite: 144]
+    
+    try { [cite: 144]
+        const { data, error } = await supabase [cite: 144]
+            .from('orders') [cite: 144]
+            .insert([{  [cite: 144]
+                user_id, restaurant_id, restaurant_name, order_items, delivery_address,  [cite: 144]
+                receiver_name, receiver_phone, cooking_instructions, item_total,  [cite: 144]
+                delivery_charge, grand_total, payment_mode: payment_mode || 'COD',  [cite: 145]
+                payment_id: payment_id || null, order_status: 'Pending'  [cite: 146]
+            }]) [cite: 146]
+            .select() [cite: 146]
+            .single(); [cite: 146]
+        if (error) throw error; [cite: 147]
+        res.json({ status: 'success', message: 'Order Confirmed!', order: data }); [cite: 147]
+    } catch (error) { [cite: 148]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 148]
+    } [cite: 148]
+}); [cite: 148]
+app.get('/order/customer/:userId', async (req, res) => { [cite: 149]
+    try { [cite: 149]
+        const { data, error } = await supabase.from('orders').select('*').eq('user_id', req.params.userId).order('created_at', { ascending: false }); [cite: 149]
+        if (error) throw error; [cite: 149]
+        res.json({ status: 'success', data }); [cite: 149]
+    } catch (error) { [cite: 149]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 149]
+    } [cite: 149]
+}); [cite: 149]
+app.get('/order/partner/:restaurantId', async (req, res) => { [cite: 150]
+    try { [cite: 150]
+        const { data, error } = await supabase.from('orders').select('*').eq('restaurant_id', req.params.restaurantId).order('created_at', { ascending: false }); [cite: 150]
+        if (error) throw error; [cite: 150]
+        res.json({ status: 'success', data }); [cite: 150]
+    } catch (error) { [cite: 150]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 150]
+    } [cite: 150]
+}); [cite: 150]
+app.post('/order/update-status', async (req, res) => { [cite: 151]
+    const { order_id, status } = req.body; [cite: 151]
+    if (!order_id || !status) return res.status(400).json({ status: 'error', message: 'Order ID aur Naya Status zaroori hai!' }); [cite: 151]
+    
+    try { [cite: 151]
+        const { data, error } = await supabase.from('orders').update({ order_status: status }).eq('id', order_id).select(); [cite: 151]
+        if (error) throw error; [cite: 151]
+        res.json({ status: 'success', message: `Order status changed to ${status}!`, data }); [cite: 151]
+    } catch (error) { [cite: 151]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 152]
+    } [cite: 152]
+}); [cite: 152]
+app.get('/admin/all-orders', async (req, res) => { [cite: 153]
+    try { [cite: 153]
+        const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false }); [cite: 153]
+        if (error) throw error; [cite: 153]
+        res.json({ status: 'success', data }); [cite: 153]
+    } catch (error) { [cite: 153]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 153]
+    } [cite: 153]
+}); [cite: 153]
+app.get('/admin/restaurants', async (req, res) => { [cite: 154]
+    try { [cite: 154]
+        const { data, error } = await supabase.from('restaurants').select('*').order('created_at', { ascending: false }); [cite: 154]
+        if (error) throw error; [cite: 154]
+        res.json({ status: 'success', data }); [cite: 154]
+    } catch (error) { [cite: 154]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 154]
+    } [cite: 154]
+}); [cite: 154]
+// ========================================== [cite: 155]
+// 🛵 DELIVERY PARTNER (RIDER) APIs (OTP ADDED) 🛵 [cite: 155]
+// ========================================== [cite: 155]
 
-    if (!mobile) {
-        return res.status(400).json({ status: 'error', message: 'Mobile number zaroori hai!' });
-    }
+// 1. Rider - Send OTP API [cite: 155]
+app.post('/rider/send-otp', async (req, res) => { [cite: 155]
+    const { mobile } = req.body; [cite: 155]
 
-    try {
-        let { data: rider, error } = await supabase
-            .from('riders')
-            .select('*')
-            .eq('mobile', mobile)
-            .maybeSingle();
+    if (!mobile || mobile.length !== 10) { [cite: 155]
+        return res.status(400).json({ status: 'error', message: 'Sahi 10-digit number daalein!' }); [cite: 155]
+    } [cite: 155]
 
-        if (error) throw error;
+    const otp = Math.floor(1000 + Math.random() * 9000).toString(); [cite: 155]
+    
+    // Memory mein OTP save karo (10 mins valid) [cite: 155]
+    riderOtpStorage.set(mobile, otp); [cite: 155]
+    setTimeout(() => riderOtpStorage.delete(mobile), 10 * 60 * 1000); [cite: 156]
 
-        if (!rider) {
-            // Naya Rider create karne ke liye check karte hai
-            if (!name || !vehicle_number) {
-                return res.status(200).json({ status: 'new_rider', message: 'Naya account hai. Name aur Vehicle number bharein.' });
-            }
-            
-            // Naya Rider create karo
-            const { data: newRider, error: insertError } = await supabase
-                .from('riders')
-                .insert([{ mobile, name, vehicle_number, is_online: false }])
-                .select();
+    try { [cite: 156]
+        console.log(`Sending Rider OTP ${otp} to ${mobile} via 2Factor...`); [cite: 156]
+        const url = `https://2factor.in/API/V1/${TWO_FACTOR_API_KEY}/SMS/${mobile}/${otp}/OTP1`; [cite: 156]
+        const response = await axios.get(url); [cite: 156]
 
-            if (insertError) throw insertError;
-            rider = newRider[0];
-        }
+        if (response.data.Status === 'Success') { [cite: 156]
+            return res.json({ status: 'success', message: 'OTP SMS par bhej diya gaya hai!' }); [cite: 156]
+        } else { [cite: 157]
+            return res.status(500).json({ status: 'error', message: 'SMS Gateway issue' }); [cite: 157]
+        } [cite: 158]
+    } catch (error) { [cite: 158]
+        console.error("❌ Rider Send OTP Error:", error.message); [cite: 158]
+        return res.status(500).json({ status: 'error', message: 'OTP bhejne mein dikkat aayi.' }); [cite: 159]
+    } [cite: 159]
+}); [cite: 159]
+// 2. Rider - Verify OTP & Login/Register [cite: 160]
+app.post('/rider/login', async (req, res) => { [cite: 160]
+    const { mobile, name, vehicle_number, otp } = req.body; [cite: 160]
 
-        // Login hone ke baad OTP hata do
-        riderOtpStorage.delete(mobile);
+    if (!mobile || !otp) { [cite: 160]
+        return res.status(400).json({ status: 'error', message: 'Mobile aur OTP zaroori hai!' }); [cite: 160]
+    } [cite: 160]
 
-        res.status(200).json({ status: 'success', message: 'Login Successful!', data: rider });
-    } catch (error) {
-        console.error("❌ Rider Login Error:", error.message);
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
+    // 🔒 OTP Verification [cite: 160]
+    const savedOtp = riderOtpStorage.get(mobile); [cite: 160]
+    
+    // Testing ke liye master OTP "0000" rakh diya hai [cite: 160]
+    if (savedOtp !== otp && otp !== "0000") { [cite: 160]
+        return res.status(400).json({ status: 'error', message: 'Galat OTP daala hai!' }); [cite: 161]
+    } [cite: 161]
 
-// 3. Update Rider Online/Offline Status
-app.post('/rider/toggle-status', async (req, res) => {
-    const { rider_id, is_online } = req.body;
-    if (!rider_id || is_online === undefined) {
-        return res.status(400).json({ status: 'error', message: 'Rider ID and Status required!' });
-    }
-    try {
-        const { data, error } = await supabase
-            .from('riders')
-            .update({ is_online: is_online })
-            .eq('id', rider_id)
-            .select();
+    try { [cite: 161]
+        let { data: rider, error } = await supabase.from('riders').select('*').eq('mobile', mobile).single(); [cite: 161]
 
-        if (error) throw error;
+        if (!rider) { [cite: 161]
+            // Agar account nahi hai, toh Name aur Vehicle zaroori hai [cite: 161]
+            if (!name || !vehicle_number) { [cite: 161]
+                return res.status(200).json({  [cite: 162]
+                    status: 'new_rider',  [cite: 162]
+                    message: 'Naya account hai. Name aur Vehicle number bharein.'  [cite: 162]
+                }); [cite: 162]
+            } [cite: 163]
 
-        res.status(200).json({
-            status: 'success',
-            message: is_online ? "Rider ab ONLINE hai 🟢" : "Rider ab OFFLINE hai 🔴",
-            data: data[0]
-        });
-    } catch (error) {
-        console.error("❌ Toggle Status Error:", error.message);
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
+            // Naya Rider create karo [cite: 163]
+            const { data: newRider, error: insertError } = await supabase [cite: 163]
+                .from('riders') [cite: 163]
+                .insert([{ mobile, name, vehicle_number, is_online: false }]) [cite: 163]
+                .select(); [cite: 163]
+            if (insertError) throw insertError; [cite: 164]
+            rider = newRider[0]; [cite: 164]
+        } [cite: 164]
 
-// 4. Update Rider Live Location
-app.post('/rider/update-location', async (req, res) => {
-    const { rider_id, latitude, longitude } = req.body;
+        // Login hone ke baad OTP hata do [cite: 164]
+        riderOtpStorage.delete(mobile); [cite: 164]
+        res.status(200).json({ [cite: 165]
+            status: 'success', [cite: 165]
+            message: 'Login Successful!', [cite: 165]
+            data: rider [cite: 165]
+        }); [cite: 165]
+    } catch (error) { [cite: 166]
+        console.error("❌ Rider Login Error:", error.message); [cite: 166]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 167]
+    } [cite: 167]
+}); [cite: 167]
 
-    if (!rider_id || !latitude || !longitude) {
-        return res.status(400).json({ status: 'error', message: 'Incomplete location data!' });
-    }
+// 3. Update Rider Status  [cite: 167]
+app.post('/rider/toggle-status', async (req, res) => { [cite: 167]
+    const { rider_id, is_online } = req.body; [cite: 167]
+    try { [cite: 167]
+        const { data, error } = await supabase [cite: 167]
+            .from('riders') [cite: 167]
+            .update({ is_online: is_online }) [cite: 167]
+            .eq('id', rider_id) [cite: 167]
+            .select(); [cite: 167]
 
-    try {
-        const { error } = await supabase
-            .from('riders')
-            .update({ current_latitude: latitude, current_longitude: longitude })
-            .eq('id', rider_id);
+        if (error) throw error; [cite: 168]
 
-        if (error) throw error;
+        res.status(200).json({ [cite: 168]
+            status: 'success', [cite: 168]
+            message: is_online ? "Rider ab ONLINE hai 🟢" : "Rider ab OFFLINE hai 🔴", [cite: 168]
+            data: data[0] [cite: 168]
+        }); [cite: 168]
+    } catch (error) { [cite: 168]
+        console.error("❌ Toggle Status Error:", error.message); [cite: 168]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 169]
+    } [cite: 169]
+}); [cite: 169]
+// 4. Update Rider Live Location [cite: 170]
+app.post('/rider/update-location', async (req, res) => { [cite: 170]
+    const { rider_id, latitude, longitude } = req.body; [cite: 170]
 
-        res.status(200).json({ status: 'success', message: 'Location updated!' });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
+    if (!rider_id || !latitude || !longitude) { [cite: 170]
+        return res.status(400).json({ status: 'error', message: 'Incomplete location data!' }); [cite: 170]
+    } [cite: 170]
 
-// ==========================================
-// START SERVER
-// ==========================================
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 KhaanaLeAao Server is running on port ${PORT}`);
-});
+    try { [cite: 170]
+        const { error } = await supabase [cite: 170]
+            .from('riders') [cite: 170]
+            .update({ current_latitude: latitude, current_longitude: longitude }) [cite: 170]
+            .eq('id', rider_id); [cite: 171]
+
+        if (error) throw error; [cite: 171]
+
+        res.status(200).json({ status: 'success', message: 'Location updated!' }); [cite: 171]
+    } catch (error) { [cite: 171]
+        res.status(500).json({ status: 'error', message: error.message }); [cite: 171]
+    } [cite: 171]
+}); [cite: 172]
+// ========================================== [cite: 172]
+// Server Start [cite: 172]
+// ========================================== [cite: 172]
+const PORT = process.env.PORT || 5000; [cite: 172]
+app.listen(PORT, () => { [cite: 173]
+  console.log(`✅ Server port ${PORT} par daud raha hai Cashfree ke sath 🍲`); [cite: 173]
+}); [cite: 173]
