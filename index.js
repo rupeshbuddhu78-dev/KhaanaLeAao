@@ -30,7 +30,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // --- CASHFREE SETUP ---
 const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID;
 const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY;
-// 🔥 Live API ka URL (Agar sandbox chalana ho toh "https://sandbox.cashfree.com/pg" kar dena)
+// 🔥 Live API ka URL (Real payments ke liye)
 const CASHFREE_URL = "https://api.cashfree.com/pg"; 
 // ----------------------
 
@@ -92,15 +92,21 @@ app.post('/create-payment', async (req, res) => {
             }
         });
 
-        // 🔥 NAYA CODE: Cashfree khud batata hai ki kaun sa official link kholna hai (Error Khatam!)
-        const checkoutUrl = response.data.payment_link;
+        // 🔥 ERROR FIXED YAHAN HAI: Naya tarika URL nikalne ka
+        const paymentSessionId = response.data.payment_session_id;
+
+        // Live vs Sandbox ke hisab se direct URL banana
+        const isSandbox = CASHFREE_URL.includes("sandbox");
+        const checkoutUrl = isSandbox 
+            ? `https://payments-test.cashfree.com/order/#${paymentSessionId}` 
+            : `https://payments.cashfree.com/order/#${paymentSessionId}`;
 
         // Android App ko Session ID, Order ID aur Naya Checkout URL bhej do
         res.status(200).json({
             status: "success",
             order_id: response.data.order_id,
-            payment_session_id: response.data.payment_session_id,
-            payment_url: checkoutUrl, // 🔥 Cashfree ka bheja hua official link
+            payment_session_id: paymentSessionId,
+            payment_url: checkoutUrl, // 🔥 Ye sahi chalega
             amount: response.data.order_amount
         });
 
@@ -779,13 +785,13 @@ app.post('/partner/update-menu-item', async (req, res) => {
 
         await supabase.from('item_variants').delete().eq('item_id', numericId);
         if (has_variants && variants && variants.length > 0) {
-            const vData = variants.map(v => ({ item_id: numericId, variant_name: v.variant_name, price: v.price }));
+            const vData = variants.map(v => ({ item_id: numericId, variant_name: v.name || v.variant_name, price: v.price }));
             await supabase.from('item_variants').insert(vData);
         }
 
         await supabase.from('item_addons').delete().eq('item_id', numericId);
         if (addons && addons.length > 0) {
-            const aData = addons.map(a => ({ item_id: numericId, addon_name: a.addon_name, price: a.price }));
+            const aData = addons.map(a => ({ item_id: numericId, addon_name: a.name || a.addon_name, price: a.price }));
             await supabase.from('item_addons').insert(aData);
         }
 
