@@ -1201,6 +1201,50 @@ app.post('/rider/update-location', async (req, res) => {
 });
 
 // ==========================================
+// 🛵 RIDER ORDER MANAGEMENT APIs 🛵
+// ==========================================
+
+// 1. Rider ko aas-paas ke "Ready" orders dikhana
+app.get('/rider/available-orders', async (req, res) => {
+    try {
+        // Sirf wo orders lao jo Ready hain aur jisme rider_id null hai
+        const { data, error } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('order_status', 'Ready')
+            .is('rider_id', null); 
+
+        if (error) throw error;
+        res.json({ status: 'success', data });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// 2. Rider jab order accept kare
+app.post('/rider/accept-order', async (req, res) => {
+    const { order_id, rider_id, rider_name, rider_phone } = req.body;
+    try {
+        // Order ko "Out for Delivery" mark karo aur Rider ki details attach karo
+        const { data, error } = await supabase
+            .from('orders')
+            .update({
+                order_status: 'Out for Delivery',
+                rider_id: rider_id,
+                rider_name: rider_name,
+                rider_phone: rider_phone
+            })
+            .eq('id', order_id)
+            .select();
+            
+        if (error) throw error;
+        res.json({ status: 'success', message: 'Order Accepted Successfully!', data });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+// ==========================================
 // Server Start
 // ==========================================
 const PORT = process.env.PORT || 5000;
