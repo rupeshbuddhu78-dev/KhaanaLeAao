@@ -31,7 +31,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID;
 const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY;
 // 🔥 Agar LIVE chalana hai toh isko "https://api.cashfree.com/pg" kar dena 
-const CASHFREE_URL = "https://sandbox.cashfree.com/pg"; 
+const CASHFREE_URL = "https://api.cashfree.com/pg";  // Ye Live API ka URL hai
 // ----------------------
 
 // --- CLOUDINARY SETUP ---
