@@ -241,7 +241,7 @@ app.post('/order/cancel', async (req, res) => {
             .update({ 
                 order_status: 'Cancelled', 
                 refund_status: refundStatus,
-                razorpay_refund_id: refundIdToSave || null  // Purane column me hi data daal rhe hain taki schema na badalna pade
+                cashfree_refund_id: refundIdToSave || null  // Purane column me hi data daal rhe hain taki schema na badalna pade
             })
             .eq('id', order_id)
             .select();
@@ -277,10 +277,10 @@ app.get('/order/track/:orderId', async (req, res) => {
             return res.status(404).json({ status: 'error', message: 'Order nahi mila!' });
         }
 
-        if (orderData.order_status === 'Cancelled' && orderData.razorpay_refund_id && orderData.refund_status !== 'Completed') {
+        if (orderData.order_status === 'Cancelled' && orderData.cashfree_refund_id && orderData.refund_status !== 'Completed') {
             try {
                 // Cashfree se refund status fetch karo
-                const refundCheck = await axios.get(`${CASHFREE_URL}/orders/${orderId}/refunds/${orderData.razorpay_refund_id}`, {
+                const refundCheck = await axios.get(`${CASHFREE_URL}/orders/${orderId}/refunds/${orderData.cashfree_refund_id}`, {
                     headers: {
                         'x-client-id': CASHFREE_APP_ID,
                         'x-client-secret': CASHFREE_SECRET_KEY,
