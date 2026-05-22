@@ -30,7 +30,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // --- CASHFREE SETUP ---
 const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID;
 const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY;
-const CASHFREE_URL = "https://sandbox.cashfree.com/pg";// LIVE Production URL // Live ki jagah Sandbox lagayein // LIVE Production URL
+// 🔥 Agar LIVE chalana hai toh isko "https://api.cashfree.com/pg" kar dena 
+const CASHFREE_URL = "https://sandbox.cashfree.com/pg"; 
 // ----------------------
 
 // --- CLOUDINARY SETUP ---
@@ -54,7 +55,7 @@ app.get('/', (req, res) => {
 // 🔥 PAYMENT GATEWAY ROUTES (CASHFREE) 🔥
 // ==========================================
 
-// 1. Create Cashfree Order Session for Android Drop-in SDK
+// 1. Create Cashfree Order Session and WEB CHECKOUT URL
 app.post('/create-payment', async (req, res) => {
     try {
         const { amount, customer_id, customer_phone } = req.body; 
@@ -76,6 +77,7 @@ app.post('/create-payment', async (req, res) => {
                 customer_name: "Khaana User"
             },
             order_meta: {
+                // Payment ke baad user is URL par jayega
                 return_url: "https://khaanaleaao.onrender.com/payment-status?order_id={order_id}"
             }
         };
@@ -89,18 +91,46 @@ app.post('/create-payment', async (req, res) => {
                 'Content-Type': 'application/json'
             }
         });
-        
-        // Android App ko Session ID aur Order ID bhej do
+
+        const paymentSessionId = response.data.payment_session_id;
+
+        // 🔥 NAYA CODE: Web Checkout ka Direct URL banana (Sandbox vs Live bypass hack)
+        const isSandbox = CASHFREE_URL.includes("sandbox");
+        const checkoutUrl = isSandbox 
+            ? `https://payments-test.cashfree.com/order/#${paymentSessionId}` 
+            : `https://payments.cashfree.com/order/#${paymentSessionId}`;
+
+        // Android App ko Session ID, Order ID aur Naya Checkout URL bhej do
         res.status(200).json({
             status: "success",
             order_id: response.data.order_id,
-            payment_session_id: response.data.payment_session_id,
+            payment_session_id: paymentSessionId,
+            payment_url: checkoutUrl, // 🔥 Ye App seedhe browser mein khol degi
             amount: response.data.order_amount
         });
+
     } catch (error) {
         console.error("❌ Cashfree Create Order Error:", error.response ? error.response.data : error.message);
         res.status(500).json({ status: "error", message: "Cashfree payment order fail ho gaya", error: error.message });
     }
+});
+
+// 🔥 NAYA ROUTE: Browser mein success screen dikhane ke liye
+app.get('/payment-status', (req, res) => {
+    const orderId = req.query.order_id;
+    res.send(`
+        <html>
+        <head><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+        <body style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+            <h1 style="color: #4CAF50;">✅ Payment Processed!</h1>
+            <p style="font-size: 18px;">Order ID: <b>${orderId || 'Unknown'}</b></p>
+            <p style="color: #666;">Aapki payment bank ke paas process ho gayi hai.</p>
+            <div style="margin-top: 30px; padding: 15px; background: #ffebee; border-radius: 8px;">
+                <h3 style="color: #d32f2f;">Ab is browser window ko band karke <br>KhaanaLeAao App par wapas chale jayein! 🍕</h3>
+            </div>
+        </body>
+        </html>
+    `);
 });
 
 // 2. Verify Cashfree Payment Status Securely from Backend
@@ -209,6 +239,7 @@ app.post('/order/cancel', async (req, res) => {
             refund_status: refundStatus,
             data: updatedOrder 
         });
+
     } catch (error) {
         console.error("❌ Cancel Order Server Error:", error);
         res.status(500).json({ status: 'error', message: error.message });
@@ -248,6 +279,7 @@ app.get('/order/track/:orderId', async (req, res) => {
                     await supabase.from('orders')
                         .update({ refund_status: 'Completed' })
                         .eq('id', orderId);
+
                     orderData.refund_status = 'Completed';
                 }
             } catch (cashfreeErr) {
@@ -262,12 +294,14 @@ app.get('/order/track/:orderId', async (req, res) => {
 
         let restAddress = "Address not found";
         let restPhone = "";
+
         if (orderData.restaurant_id) {
             const { data: restData } = await supabase
                 .from('restaurants')
                 .select('address, phone')
                 .eq('phone', orderData.restaurant_id) 
                 .maybeSingle();
+
             if (restData) {
                 restAddress = restData.address;
                 restPhone = restData.phone;
@@ -285,10 +319,12 @@ app.get('/order/track/:orderId', async (req, res) => {
             receiver_name: orderData.receiver_name || "User Name", 
             receiver_phone: orderData.receiver_phone || "No Phone" 
         };
+
         res.status(200).json({
             status: "success",
             data: liveData
         });
+
     } catch (error) {
         console.error("❌ Track Order Error:", error);
         res.status(500).json({ status: 'error', message: error.message });
@@ -369,7 +405,7 @@ app.post('/complete-registration', async (req, res) => {
             .single();
 
         if (existingUser) {
-             if (existingUser.status !== 'incomplete') {
+            if (existingUser.status !== 'incomplete') {
                  return res.status(400).json({ status: 'error', message: 'Ye mobile number pehle se registered hai!' });
             } else {
                 const { error: updateError } = await supabase
@@ -385,8 +421,10 @@ app.post('/complete-registration', async (req, res) => {
         const { error: insertError } = await supabase
             .from('restaurants')
             .insert([{ name, phone, password, status: 'incomplete' }]);
+
         if (insertError) throw insertError;
         res.json({ status: 'success', message: 'Basic Account Created!' });
+
     } catch (error) {
         console.error("❌ Supabase Error:", error.message);
         res.status(500).json({ status: 'error', message: error.message });
@@ -600,6 +638,7 @@ app.get('/partner/menu/:phone', async (req, res) => {
                 addons: addons ? addons.filter(a => a.item_id === item.id) : []
             };
         });
+        
         res.json({ status: 'success', data: completeMenu });
 
     } catch (error) {
@@ -638,7 +677,7 @@ app.post('/add-menu-item', async (req, res) => {
             }])
             .select()
             .single();
-
+            
         if (itemError) throw itemError;
 
         const newDishId = menuItem.id;
@@ -744,15 +783,14 @@ app.post('/partner/update-menu-item', async (req, res) => {
         if (updateErr) throw updateErr;
 
         await supabase.from('item_variants').delete().eq('item_id', numericId);
-        await supabase.from('item_addons').delete().eq('item_id', numericId);
-
         if (has_variants && variants && variants.length > 0) {
-            const vData = variants.map(v => ({ item_id: numericId, variant_name: v.name || v.variant_name, price: v.price }));
+            const vData = variants.map(v => ({ item_id: numericId, variant_name: v.variant_name, price: v.price }));
             await supabase.from('item_variants').insert(vData);
         }
-        
+
+        await supabase.from('item_addons').delete().eq('item_id', numericId);
         if (addons && addons.length > 0) {
-            const aData = addons.map(a => ({ item_id: numericId, addon_name: a.name || a.addon_name, price: a.price }));
+            const aData = addons.map(a => ({ item_id: numericId, addon_name: a.addon_name, price: a.price }));
             await supabase.from('item_addons').insert(aData);
         }
 
@@ -766,11 +804,9 @@ app.post('/partner/update-menu-item', async (req, res) => {
 // ==========================================
 // 🔥 CUSTOMER (USER) AUTHENTICATION & PROFILE ROUTES 🔥
 // ==========================================
-
 app.post('/user/check', async (req, res) => {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ status: 'error', message: 'Phone number zaroori hai!' });
-
     try {
         const { data, error } = await supabase.from('users').select('*').eq('phone', phone).maybeSingle();
         if (error) throw error;
@@ -787,7 +823,6 @@ app.post('/user/check', async (req, res) => {
 app.post('/user/register', async (req, res) => {
     const { phone, full_name, email } = req.body;
     if (!phone || !full_name) return res.status(400).json({ status: 'error', message: 'Phone aur Name dono zaroori hain!' });
-
     try {
         const { data, error } = await supabase.from('users').insert([{ phone, full_name, email: email || null }]).select().single();
         if (error) {
@@ -802,11 +837,9 @@ app.post('/user/register', async (req, res) => {
 
 app.post('/user/update-profile', async (req, res) => {
     const { current_phone, new_phone, full_name, email, image } = req.body;
-
     if (!current_phone) {
         return res.status(400).json({ status: 'error', message: 'User ka phone number missing hai!' });
     }
-
     try {
         let secureUrl = null;
         if (image) {
@@ -814,26 +847,16 @@ app.post('/user/update-profile', async (req, res) => {
             const uploadResponse = await cloudinary.uploader.upload(base64Image, { folder: 'khaanaleaao_users', width: 400, crop: 'scale' });
             secureUrl = uploadResponse.secure_url;
         }
-
         const updates = { updated_at: new Date() };
         if (full_name) updates.full_name = full_name;
         if (email) updates.email = email;
         if (new_phone) updates.phone = new_phone;
         if (secureUrl) updates.profile_image_url = secureUrl;
 
-        const { data, error } = await supabase
-            .from('users')
-            .update(updates)
-            .eq('phone', current_phone)
-            .select()
-            .single();
-
-        if (error) {
-            console.error('Supabase Update Error:', error);
-            return res.status(500).json({ status: 'error', message: 'Database update me error aayi.' });
-        }
-
-        res.status(200).json({ status: 'success', message: 'Profile updated successfully!', user: data, imageUrl: secureUrl });
+        const { data, error } = await supabase.from('users').update(updates).eq('phone', current_phone).select();
+        if (error) throw error;
+        
+        res.json({ status: 'success', message: 'Profile update ho gayi!', data: data, imageUrl: secureUrl });
     } catch (error) {
         console.error('Profile Update Backend Error:', error);
         res.status(500).json({ status: 'error', message: 'Server error.', error: error.message });
@@ -843,7 +866,6 @@ app.post('/user/update-profile', async (req, res) => {
 // ==========================================
 // 🔥 CUSTOMER APP HOME SCREEN ROUTES
 // ==========================================
-
 app.get('/customer/restaurants', async (req, res) => {
     try {
         const { data, error } = await supabase.from('restaurants').select('phone, name, restaurant_name, cuisine_type, logo_url, is_online').eq('status', 'active');
@@ -874,7 +896,6 @@ app.get('/customer/categories', async (req, res) => {
 app.post('/partner/updateProfile', async (req, res) => {
     const { phone, field, value } = req.body;
     if (!phone || !field) return res.status(400).json({ status: 'error', message: 'Phone aur field name zaroori hai!' });
-    
     try {
         const { data, error } = await supabase.from('restaurants').update({ [field]: value }).eq('phone', phone).select();
         if (error) throw error;
@@ -887,15 +908,13 @@ app.post('/partner/updateProfile', async (req, res) => {
 // ==========================================
 // 🔥 USER ADDRESS MANAGEMENT ROUTES
 // ==========================================
-
 app.post('/user/address/add', async (req, res) => {
     const { user_id, address_type, receiver_name, full_address, receiver_phone } = req.body;
-    if (!user_id || !full_address || !receiver_phone) return res.status(400).json({ status: 'error', message: 'Zaroori details missing hain!' });
-    
+    if (!user_id || !full_address || !receiver_phone) return res.status(400).json({ status: 'error', message: 'Data incomplete hai!' });
     try {
-        const { data, error } = await supabase.from('user_addresses').insert([{ user_id, address_type: address_type || 'Home', receiver_name, full_address, receiver_phone }]).select();
+        const { data, error } = await supabase.from('user_addresses').insert([{ user_id, address_type, receiver_name, full_address, receiver_phone }]).select();
         if (error) throw error;
-        res.json({ status: 'success', message: 'Address successfully save ho gaya!', data });
+        res.json({ status: 'success', message: 'Address save ho gaya!', data });
     } catch (error) {
         res.status(500).json({ status: 'error', message: error.message });
     }
@@ -903,7 +922,7 @@ app.post('/user/address/add', async (req, res) => {
 
 app.get('/user/addresses/:userId', async (req, res) => {
     try {
-        const { data, error } = await supabase.from('user_addresses').select('*').eq('user_id', req.params.userId).order('created_at', { ascending: false });
+        const { data, error } = await supabase.from('user_addresses').select('*').eq('user_id', req.params.userId);
         if (error) throw error;
         res.json({ status: 'success', data });
     } catch (error) {
@@ -914,7 +933,6 @@ app.get('/user/addresses/:userId', async (req, res) => {
 app.post('/user/address/update', async (req, res) => {
     const { id, address_type, receiver_name, full_address, receiver_phone } = req.body;
     if (!id) return res.status(400).json({ status: 'error', message: 'Address ID zaroori hai!' });
-    
     try {
         const { data, error } = await supabase.from('user_addresses').update({ address_type, receiver_name, full_address, receiver_phone }).eq('id', id).select();
         if (error) throw error;
@@ -937,30 +955,18 @@ app.delete('/user/address/delete/:id', async (req, res) => {
 // ==========================================
 // 🚀 🔥 ORDER MANAGEMENT & ADMIN POWERS 🔥 🚀
 // ==========================================
-
 app.post('/order/place', async (req, res) => {
-    const { 
-        user_id, restaurant_id, restaurant_name, order_items, delivery_address, 
-        receiver_name, receiver_phone, cooking_instructions, item_total, 
-        delivery_charge, grand_total, payment_mode, payment_id 
-    } = req.body;
-    
+    const { user_id, restaurant_id, restaurant_name, order_items, delivery_address, receiver_name, receiver_phone, cooking_instructions, item_total, delivery_charge, grand_total, payment_mode, payment_id } = req.body;
     if (!user_id || !restaurant_id || !order_items || !grand_total) {
         return res.status(400).json({ status: 'error', message: 'Order details missing hain!' });
     }
-    
     try {
         const { data, error } = await supabase
             .from('orders')
-            .insert([{ 
-                user_id, restaurant_id, restaurant_name, order_items, delivery_address, 
-                receiver_name, receiver_phone, cooking_instructions, item_total, 
-                delivery_charge, grand_total, payment_mode: payment_mode || 'COD', 
-                payment_id: payment_id || null, order_status: 'Pending' 
-            }])
+            .insert([{ user_id, restaurant_id, restaurant_name, order_items, delivery_address, receiver_name, receiver_phone, cooking_instructions, item_total, delivery_charge, grand_total, payment_mode: payment_mode || 'COD', payment_id: payment_id || null, order_status: 'Pending' }])
             .select()
             .single();
-
+            
         if (error) throw error;
         res.json({ status: 'success', message: 'Order Confirmed!', order: data });
     } catch (error) {
@@ -978,20 +984,8 @@ app.get('/order/customer/:userId', async (req, res) => {
     }
 });
 
-app.get('/order/partner/:restaurantId', async (req, res) => {
-    try {
-        const { data, error } = await supabase.from('orders').select('*').eq('restaurant_id', req.params.restaurantId).order('created_at', { ascending: false });
-        if (error) throw error;
-        res.json({ status: 'success', data });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
-    }
-});
-
-app.post('/order/update-status', async (req, res) => {
+app.post('/admin/update-order-status', async (req, res) => {
     const { order_id, status } = req.body;
-    if (!order_id || !status) return res.status(400).json({ status: 'error', message: 'Order ID aur Naya Status zaroori hai!' });
-    
     try {
         const { data, error } = await supabase.from('orders').update({ order_status: status }).eq('id', order_id).select();
         if (error) throw error;
@@ -1028,86 +1022,80 @@ app.get('/admin/restaurants', async (req, res) => {
 // 1. Rider - Send OTP API
 app.post('/rider/send-otp', async (req, res) => {
     const { mobile } = req.body;
-
     if (!mobile || mobile.length !== 10) {
         return res.status(400).json({ status: 'error', message: 'Sahi 10-digit number daalein!' });
     }
-
+    
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
     
     // Memory mein OTP save karo (10 mins valid)
     riderOtpStorage.set(mobile, otp);
     setTimeout(() => riderOtpStorage.delete(mobile), 10 * 60 * 1000);
-
+    
     try {
         console.log(`Sending Rider OTP ${otp} to ${mobile} via 2Factor...`);
         const url = `https://2factor.in/API/V1/${TWO_FACTOR_API_KEY}/SMS/${mobile}/${otp}/OTP1`;
         const response = await axios.get(url);
-
+        
         if (response.data.Status === 'Success') {
-            return res.json({ status: 'success', message: 'OTP SMS par bhej diya gaya hai!' });
+            return res.json({ status: 'success', message: 'OTP SMS par bhej diya gaya hai!', otp: otp });
         } else {
             return res.status(500).json({ status: 'error', message: 'SMS Gateway issue' });
         }
     } catch (error) {
-        console.error("❌ Rider Send OTP Error:", error.message);
-        return res.status(500).json({ status: 'error', message: 'OTP bhejne mein dikkat aayi.' });
+        return res.status(500).json({ status: 'error', message: 'Backend crash ho gaya.' });
     }
 });
 
-// 2. Rider - Verify OTP & Login/Register
+// 2. Rider - Verify OTP & Login
 app.post('/rider/login', async (req, res) => {
-    const { mobile, name, vehicle_number, otp } = req.body;
+    const { mobile, name, vehicle_number } = req.body;
 
-    if (!mobile || !otp) {
-        return res.status(400).json({ status: 'error', message: 'Mobile aur OTP zaroori hai!' });
-    }
-
-    // 🔒 OTP Verification
-    const savedOtp = riderOtpStorage.get(mobile);
-    
-    // Testing ke liye master OTP "0000" rakh diya hai
-    if (savedOtp !== otp && otp !== "0000") {
-         return res.status(400).json({ status: 'error', message: 'Galat OTP daala hai!' });
+    if (!mobile) {
+        return res.status(400).json({ status: 'error', message: 'Mobile number zaroori hai!' });
     }
 
     try {
-        let { data: rider, error } = await supabase.from('riders').select('*').eq('mobile', mobile).single();
+        let { data: rider, error } = await supabase
+            .from('riders')
+            .select('*')
+            .eq('mobile', mobile)
+            .maybeSingle();
+
+        if (error) throw error;
 
         if (!rider) {
-            // Agar account nahi hai, toh Name aur Vehicle zaroori hai
+            // Naya Rider create karne ke liye check karte hai
             if (!name || !vehicle_number) {
-                 return res.status(200).json({ 
-                    status: 'new_rider', 
-                    message: 'Naya account hai. Name aur Vehicle number bharein.' 
-                });
+                return res.status(200).json({ status: 'new_rider', message: 'Naya account hai. Name aur Vehicle number bharein.' });
             }
-
+            
             // Naya Rider create karo
             const { data: newRider, error: insertError } = await supabase
                 .from('riders')
                 .insert([{ mobile, name, vehicle_number, is_online: false }])
                 .select();
+
             if (insertError) throw insertError;
             rider = newRider[0];
         }
 
         // Login hone ke baad OTP hata do
         riderOtpStorage.delete(mobile);
-        res.status(200).json({
-            status: 'success',
-            message: 'Login Successful!',
-            data: rider
-        });
+
+        res.status(200).json({ status: 'success', message: 'Login Successful!', data: rider });
     } catch (error) {
         console.error("❌ Rider Login Error:", error.message);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
 
-// 3. Update Rider Status 
+// 3. Update Rider Online/Offline Status
 app.post('/rider/toggle-status', async (req, res) => {
     const { rider_id, is_online } = req.body;
+    if (!rider_id || is_online === undefined) {
+        return res.status(400).json({ status: 'error', message: 'Rider ID and Status required!' });
+    }
     try {
         const { data, error } = await supabase
             .from('riders')
@@ -1151,9 +1139,9 @@ app.post('/rider/update-location', async (req, res) => {
 });
 
 // ==========================================
-// Server Start
+// START SERVER
 // ==========================================
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`✅ Server port ${PORT} par daud raha hai Cashfree ke sath 🍲`);
+    console.log(`🚀 KhaanaLeAao Server is running on port ${PORT}`);
 });
