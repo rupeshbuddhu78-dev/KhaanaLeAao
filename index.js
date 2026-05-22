@@ -1205,18 +1205,36 @@ app.post('/rider/update-location', async (req, res) => {
 // ==========================================
 
 // 1. Rider ko aas-paas ke "Ready" orders dikhana
+// 🟢 FIXED: Rider ko Restaurant Address ke sath orders dikhana
 app.get('/rider/available-orders', async (req, res) => {
     try {
-        // Sirf wo orders lao jo Ready hain aur jisme rider_id null hai
-        const { data, error } = await supabase
+        // 1. Pehle saare Ready orders nikalo
+        const { data: orders, error } = await supabase
             .from('orders')
             .select('*')
             .eq('order_status', 'Ready')
             .is('rider_id', null); 
 
         if (error) throw error;
-        res.json({ status: 'success', data });
+
+        // 2. Har order ke restaurant_id se uska address dhoondh kar map karo
+        const detailedOrders = await Promise.all(orders.map(async (order) => {
+            // order.restaurant_id me phone number hai, use restaurant table ke phone se match karo
+            const { data: restData } = await supabase
+                .from('restaurants')
+                .select('address')
+                .eq('phone', order.restaurant_id)
+                .maybeSingle();
+                
+            return {
+                ...order,
+                restaurant_address: restData ? restData.address : "Address not found"
+            };
+        }));
+
+        res.json({ status: 'success', data: detailedOrders });
     } catch (error) {
+        console.error("❌ Fetch Orders Error:", error);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
