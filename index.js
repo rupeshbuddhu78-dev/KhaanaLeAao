@@ -1,23 +1,23 @@
-const express = require('express'); [cite: 1]
-const cors = require('cors'); [cite: 1]
-const axios = require('axios'); [cite: 1]
-const https = require('https'); [cite: 1]
-const { createClient } = require('@supabase/supabase-js'); [cite: 2]
-const crypto = require('crypto'); [cite: 2]
-const cloudinary = require('cloudinary').v2; [cite: 2]
+const express = require('express'); 
+const cors = require('cors'); 
+const axios = require('axios'); 
+const https = require('https'); 
+const { createClient } = require('@supabase/supabase-js'); 
+const crypto = require('crypto');
+const cloudinary = require('cloudinary').v2; 
 
-require('dotenv').config(); [cite: 2]
+require('dotenv').config(); 
 
-const app = express(); [cite: 2]
+const app = express(); 
 // Middleware (Image upload ke liye limit badha kar 10mb kar di hai) [cite: 3]
 app.use(cors()); [cite: 3]
 app.use(express.json({ limit: '10mb' })); [cite: 3]
-app.use(express.urlencoded({ limit: '10mb', extended: true })); [cite: 4]
-app.use(express.static('public')); [cite: 4]
+app.use(express.urlencoded({ limit: '10mb', extended: true })); 
+app.use(express.static('public')); 
 
 // --- SUPABASE SETUP ---
-const supabaseUrl = process.env.SUPABASE_URL; [cite: 4]
-const supabaseKey = process.env.SUPABASE_KEY; [cite: 4]
+const supabaseUrl = process.env.SUPABASE_URL; 
+const supabaseKey = process.env.SUPABASE_KEY; 
 if (!supabaseUrl || !supabaseKey) { [cite: 5]
     console.error("❌ ERROR: .env file mein Supabase URL ya Key missing hai!"); [cite: 5]
 } [cite: 6]
