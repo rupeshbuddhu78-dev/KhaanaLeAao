@@ -1222,28 +1222,42 @@ app.get('/rider/available-orders', async (req, res) => {
 });
 
 // 2. Rider jab order accept kare
+// 2. Rider jab order accept kare (FIXED: Real details from Database)
 app.post('/rider/accept-order', async (req, res) => {
-    const { order_id, rider_id, rider_name, rider_phone } = req.body;
+    const { order_id, rider_id } = req.body;
+    
     try {
-        // Order ko "Out for Delivery" mark karo aur Rider ki details attach karo
+        // Step 1: Pehle Database se Rider ka asli naam aur number nikalo
+        const { data: riderData, error: riderError } = await supabase
+            .from('riders')
+            .select('name, mobile')
+            .eq('id', rider_id)
+            .single();
+
+        if (riderError || !riderData) {
+            return res.status(400).json({ status: 'error', message: 'Rider ki details database me nahi mili!' });
+        }
+
+        // Step 2: Ab Order table me asli details update karo
         const { data, error } = await supabase
             .from('orders')
             .update({
                 order_status: 'Out for Delivery',
                 rider_id: rider_id,
-                rider_name: rider_name,
-                rider_phone: rider_phone
+                rider_name: riderData.name,    // Database se laya hua Asli Naam
+                rider_phone: riderData.mobile  // Database se laya hua Asli Number
             })
             .eq('id', order_id)
             .select();
             
         if (error) throw error;
+        
         res.json({ status: 'success', message: 'Order Accepted Successfully!', data });
     } catch (error) {
+        console.error("❌ Accept Order Error:", error.message);
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
-
 // ==========================================
 // Server Start
 // ==========================================
