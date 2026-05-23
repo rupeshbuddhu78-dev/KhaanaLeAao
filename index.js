@@ -810,6 +810,29 @@ app.post('/partner/update-menu-item', async (req, res) => {
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
+// 🔥 NAYA: Restaurant Address aur Location ek sath update karne ke liye
+app.post('/partner/update-address', async (req, res) => {
+    const { phone, address, latitude, longitude } = req.body;
+    
+    if (!phone || !address) return res.status(400).json({ status: 'error', message: 'Phone aur Address zaroori hai!' });
+
+    try {
+        const { data, error } = await supabase
+            .from('restaurants')
+            .update({ 
+                address: address, 
+                latitude: latitude, 
+                longitude: longitude 
+            })
+            .eq('phone', phone)
+            .select();
+
+        if (error) throw error;
+        res.json({ status: 'success', message: 'Restaurant Location Updated Successfully!', data });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+});
 
 // ==========================================
 // 🔥 CUSTOMER (USER) AUTHENTICATION & PROFILE ROUTES 🔥
