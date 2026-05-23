@@ -936,12 +936,29 @@ app.post('/partner/updateProfile', async (req, res) => {
 // 🔥 USER ADDRESS MANAGEMENT ROUTES
 // ==========================================
 
+// ==========================================
+// 🔥 USER ADDRESS MANAGEMENT ROUTES (UPDATED WITH LAT/LNG)
+// ==========================================
+
 app.post('/user/address/add', async (req, res) => {
-    const { user_id, address_type, receiver_name, full_address, receiver_phone } = req.body;
-    if (!user_id || !full_address || !receiver_phone) return res.status(400).json({ status: 'error', message: 'Zaroori details missing hain!' });
+    // 🔥 NAYA: req.body se latitude aur longitude bhi nikal rahe hain
+    const { user_id, address_type, receiver_name, full_address, receiver_phone, latitude, longitude } = req.body;
+    
+    if (!user_id || !full_address || !receiver_phone) {
+        return res.status(400).json({ status: 'error', message: 'Zaroori details missing hain!' });
+    }
     
     try {
-        const { data, error } = await supabase.from('user_addresses').insert([{ user_id, address_type: address_type || 'Home', receiver_name, full_address, receiver_phone }]).select();
+        const { data, error } = await supabase.from('user_addresses').insert([{ 
+            user_id, 
+            address_type: address_type || 'Home', 
+            receiver_name, 
+            full_address, 
+            receiver_phone,
+            latitude: latitude || null,   // 🔥 NAYA: Database me save hoga
+            longitude: longitude || null  // 🔥 NAYA: Database me save hoga
+        }]).select();
+        
         if (error) throw error;
         res.json({ status: 'success', message: 'Address successfully save ho gaya!', data });
     } catch (error) {
@@ -960,11 +977,21 @@ app.get('/user/addresses/:userId', async (req, res) => {
 });
 
 app.post('/user/address/update', async (req, res) => {
-    const { id, address_type, receiver_name, full_address, receiver_phone } = req.body;
+    // 🔥 NAYA: Update mein bhi latitude/longitude ka option add kar diya hai
+    const { id, address_type, receiver_name, full_address, receiver_phone, latitude, longitude } = req.body;
+    
     if (!id) return res.status(400).json({ status: 'error', message: 'Address ID zaroori hai!' });
     
     try {
-        const { data, error } = await supabase.from('user_addresses').update({ address_type, receiver_name, full_address, receiver_phone }).eq('id', id).select();
+        // Jo jo data update karna hai uski list
+        const updateData = { address_type, receiver_name, full_address, receiver_phone };
+        
+        // Agar naya lat/lng bheja gaya hai toh use bhi add karo
+        if (latitude !== undefined) updateData.latitude = latitude;
+        if (longitude !== undefined) updateData.longitude = longitude;
+
+        const { data, error } = await supabase.from('user_addresses').update(updateData).eq('id', id).select();
+        
         if (error) throw error;
         res.json({ status: 'success', message: 'Address update ho gaya!', data });
     } catch (error) {
@@ -981,7 +1008,6 @@ app.delete('/user/address/delete/:id', async (req, res) => {
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
-
 // ==========================================
 // 🚀 🔥 ORDER MANAGEMENT & ADMIN POWERS 🔥 🚀
 // ==========================================
