@@ -1254,7 +1254,7 @@ app.post('/rider/update-location', async (req, res) => {
 // ==========================================
 
 // 1. Rider ko aas-paas ke "Ready" orders dikhana
-// 🟢 FIXED: Rider ko Restaurant Address ke sath orders dikhana
+/// 🟢 FIXED: Rider ko Exact Coordinates (Lat/Lng) aur Address ke sath orders bhejna
 app.get('/rider/available-orders', async (req, res) => {
     try {
         // 1. Pehle saare Ready orders nikalo
@@ -1266,18 +1266,21 @@ app.get('/rider/available-orders', async (req, res) => {
 
         if (error) throw error;
 
-        // 2. Har order ke restaurant_id se uska address dhoondh kar map karo
+        // 2. Har order ke restaurant_id se uska address aur lat/lng dhoondh kar map karo
         const detailedOrders = await Promise.all(orders.map(async (order) => {
-            // order.restaurant_id me phone number hai, use restaurant table ke phone se match karo
+            // 🔥 YAHAN CHANGE HUA HAI: address ke sath latitude aur longitude bhi select kiya
             const { data: restData } = await supabase
                 .from('restaurants')
-                .select('address')
+                .select('address, latitude, longitude') 
                 .eq('phone', order.restaurant_id)
                 .maybeSingle();
                 
             return {
                 ...order,
-                restaurant_address: restData ? restData.address : "Address not found"
+                restaurant_address: restData ? restData.address : "Address not found",
+                // 🔥 YAHAN CHANGE HUA HAI: Rider app ko lat/lng bhej rahe hain
+                restaurant_lat: restData && restData.latitude ? restData.latitude : 0.0,
+                restaurant_lon: restData && restData.longitude ? restData.longitude : 0.0
             };
         }));
 
@@ -1287,7 +1290,6 @@ app.get('/rider/available-orders', async (req, res) => {
         res.status(500).json({ status: 'error', message: error.message });
     }
 });
-
 // 2. Rider jab order accept kare
 // 2. Rider jab order accept kare (FIXED: Real details from Database)
 app.post('/rider/accept-order', async (req, res) => {
